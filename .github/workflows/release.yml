@@ -109,9 +109,27 @@ jobs:
                     yarn release --ci --no-npm
                   fi
 
-            - name: Output Release Info
+            - name: Extract Latest Changelog
               if: steps.check.outputs.should_release == 'true'
+              id: changelog
               run: |
-                  LATEST_TAG=$(git describe --tags --abbrev=0)
-                  echo "✅ Release created: $LATEST_TAG"
-                  echo "📦 View release: https://github.com/${{ github.repository }}/releases/tag/$LATEST_TAG"
+                  # Extract only the latest version section from CHANGELOG.md
+                  VERSION=$(git describe --tags --abbrev=0)
+
+                  # Use awk to extract content between first ## and second ##
+                  CHANGELOG=$(awk '/^## \[?[0-9]/{if(++count==2) exit; if(count==1) next} count==1' CHANGELOG.md)
+
+                  # Save to file for GitHub release update
+                  echo "$CHANGELOG" > /tmp/release-notes.md
+
+                  echo "Extracted changelog for $VERSION"
+
+            - name: Update GitHub Release Notes
+              if: steps.check.outputs.should_release == 'true'
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  VERSION=$(git describe --tags --abbrev=0)
+
+                  # Update the release with extracted changelog
+                  gh release edit $VERSION --notes-file /tmp/release-notes.md
