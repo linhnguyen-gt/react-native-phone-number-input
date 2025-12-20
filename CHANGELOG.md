@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+# [3.7.0](https://github.com/linhnguyen-gt/react-native-phone-number-input/compare/v3.6.0...v3.7.0) (2025-12-20)
+
+
+### Features
+
+* implement automated release workflow and configure conventional changelog generation ([f5e33e3](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/f5e33e3177296caaab4d72c5a123b5a7cc5fb063))
+
 # [3.6.0](https://github.com/linhnguyen-gt/react-native-phone-number-input/compare/3.5.0...v3.6.0) (2025-12-20)
 
 

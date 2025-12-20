@@ -1,6 +1,6 @@
 {
     "name": "@linhnguyen96114/react-native-phone-input",
-    "version": "3.6.0",
+    "version": "3.7.0",
     "description": "React Native component for phone number",
     "packageManager": "yarn@4.9.1",
     "source": "./src/index.tsx",
