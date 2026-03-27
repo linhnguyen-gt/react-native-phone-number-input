@@ -10,6 +10,9 @@
     <a href="https://www.npmjs.com/package/@linhnguyen96114/react-native-phone-input">
       <img src="https://img.shields.io/npm/v/@linhnguyen96114/react-native-phone-input.svg" alt="npm version">
     </a>
+    <a href="https://www.npmjs.com/package/@linhnguyen96114/react-native-phone-input">
+      <img src="https://img.shields.io/npm/dm/%40linhnguyen96114%2Freact-native-phone-input.svg" alt="npm downloads per month">
+    </a>
     <a href="https://github.com/linhnguyen-gt/react-native-phone-number-input/blob/master/LICENSE">
       <img src="https://img.shields.io/github/license/linhnguyen-gt/react-native-phone-number-input.svg" alt="license">
     </a>
@@ -18,17 +21,17 @@
 
 ## ✨ Features
 
-- 📱 Cross-platform support (iOS & Android)
-- 🎨 Highly customizable UI
-- 🔍 Built-in country search
-- ✅ Google LibPhoneNumber validation
-- 🎯 TypeScript support
-- 🔄 Two flexible layouts
-- 🏳️ Country emoji flags support
-- 📞 Automatic country detection
-- 🎨 Dark theme support
-- 🎭 Country-specific phone number masking
-- 🔧 Extensive API
+-   📱 Cross-platform support (iOS & Android)
+-   🎨 Highly customizable UI
+-   🔍 Built-in country search
+-   ✅ Google LibPhoneNumber validation
+-   🎯 TypeScript support
+-   🔄 Two flexible layouts
+-   🏳️ Country emoji flags support
+-   📞 Automatic country detection
+-   🎨 Dark theme support
+-   🎭 Country-specific phone number masking
+-   🔧 Extensive API
 
 ## 🚀 Installation
 
@@ -50,20 +53,12 @@ cd ios && pod install
 <img src="image/basic.png" width="300" style="border-radius: 10px; margin: 20px 0;">
 
 ```tsx
-import PhoneInput from '@linhnguyen96114/react-native-phone-input';
+import PhoneInput from "@linhnguyen96114/react-native-phone-input";
 
 const BasicExample = () => {
-  const [value, setValue] = useState('');
+    const [value, setValue] = useState("");
 
-  return (
-    <PhoneInput
-      defaultValue={value}
-      defaultCode="US"
-      onChangeText={setValue}
-      withShadow
-      autoFocus
-    />
-  );
+    return <PhoneInput defaultValue={value} defaultCode="US" onChangeText={setValue} withShadow autoFocus />;
 };
 ```
 
@@ -73,30 +68,30 @@ const BasicExample = () => {
 
 ```tsx
 const CustomStyledExample = () => {
-  const [value, setValue] = useState('');
+    const [value, setValue] = useState("");
 
-  return (
-    <PhoneInput
-      defaultValue={value}
-      defaultCode="US"
-      onChangeText={setValue}
-      containerStyle={{
-        width: '100%',
-        borderRadius: 30,
-        backgroundColor: '#fff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 3,
-      }}
-      textContainerStyle={{
-        borderRadius: 30,
-        backgroundColor: '#fff',
-        paddingHorizontal: 15,
-      }}
-    />
-  );
+    return (
+        <PhoneInput
+            defaultValue={value}
+            defaultCode="US"
+            onChangeText={setValue}
+            containerStyle={{
+                width: "100%",
+                borderRadius: 30,
+                backgroundColor: "#fff",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 3,
+                elevation: 3
+            }}
+            textContainerStyle={{
+                borderRadius: 30,
+                backgroundColor: "#fff",
+                paddingHorizontal: 15
+            }}
+        />
+    );
 };
 ```
 
@@ -106,27 +101,27 @@ const CustomStyledExample = () => {
 
 ```tsx
 const DarkThemeExample = () => {
-  const [value, setValue] = useState('');
+    const [value, setValue] = useState("");
 
-  return (
-    <PhoneInput
-      defaultValue={value}
-      defaultCode="GB"
-      onChangeText={setValue}
-      withDarkTheme
-      containerStyle={{
-        backgroundColor: '#2A2A2A',
-        borderRadius: 12,
-      }}
-      textContainerStyle={{
-        backgroundColor: '#2A2A2A',
-        borderRadius: 12,
-      }}
-      textInputStyle={{
-        color: '#fff',
-      }}
-    />
-  );
+    return (
+        <PhoneInput
+            defaultValue={value}
+            defaultCode="GB"
+            onChangeText={setValue}
+            withDarkTheme
+            containerStyle={{
+                backgroundColor: "#2A2A2A",
+                borderRadius: 12
+            }}
+            textContainerStyle={{
+                backgroundColor: "#2A2A2A",
+                borderRadius: 12
+            }}
+            textInputStyle={{
+                color: "#fff"
+            }}
+        />
+    );
 };
 ```
 
@@ -136,32 +131,32 @@ const DarkThemeExample = () => {
 
 ```tsx
 const FormExample = () => {
-  const [value, setValue] = useState('');
-  const [valid, setValid] = useState(false);
-  const phoneInput = useRef<PhoneInputRefType>(null);
+    const [value, setValue] = useState("");
+    const [valid, setValid] = useState(false);
+    const phoneInput = useRef<PhoneInputRefType>(null);
 
-  const checkValidation = () => {
-    const isValid = phoneInput.current?.isValidNumber(value);
-    setValid(isValid || false);
-  };
+    const checkValidation = () => {
+        const isValid = phoneInput.current?.isValidNumber(value);
+        setValid(isValid || false);
+    };
 
-  return (
-    <PhoneInput
-      ref={phoneInput}
-      defaultValue={value}
-      defaultCode="FR"
-      onChangeText={setValue}
-      onChangeFormattedText={(text) => {
-        console.log('Formatted:', text);
-      }}
-      containerStyle={{
-        width: '100%',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: valid ? '#4CAF50' : '#dee2e6',
-      }}
-    />
-  );
+    return (
+        <PhoneInput
+            ref={phoneInput}
+            defaultValue={value}
+            defaultCode="FR"
+            onChangeText={setValue}
+            onChangeFormattedText={(text) => {
+                console.log("Formatted:", text);
+            }}
+            containerStyle={{
+                width: "100%",
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: valid ? "#4CAF50" : "#dee2e6"
+            }}
+        />
+    );
 };
 ```
 
@@ -169,23 +164,23 @@ const FormExample = () => {
 
 ```tsx
 const MaskingExample = () => {
-  const [value, setValue] = useState('');
-  const [formattedValue, setFormattedValue] = useState('');
+    const [value, setValue] = useState("");
+    const [formattedValue, setFormattedValue] = useState("");
 
-  return (
-    <PhoneInput
-      defaultValue={value}
-      defaultCode="US"
-      onChangeText={setValue}
-      onChangeFormattedText={setFormattedValue}
-      withMask
-      withShadow
-      containerStyle={{
-        width: '100%',
-        borderRadius: 12,
-      }}
-    />
-  );
+    return (
+        <PhoneInput
+            defaultValue={value}
+            defaultCode="US"
+            onChangeText={setValue}
+            onChangeFormattedText={setFormattedValue}
+            withMask
+            withShadow
+            containerStyle={{
+                width: "100%",
+                borderRadius: 12
+            }}
+        />
+    );
 };
 // User types: 1234567890
 // Display shows: (123) 456-7890
@@ -195,42 +190,42 @@ const MaskingExample = () => {
 
 ## 🛠️ Props
 
-| Prop                       | Type                         | Description                          |
-|----------------------------|------------------------------|--------------------------------------|
-| `withDarkTheme`            | `boolean`                    | Enable dark theme                    |
-| `withShadow`               | `boolean`                    | Add shadow effect                    |
+| Prop                       | Type                         | Description                           |
+| -------------------------- | ---------------------------- | ------------------------------------- |
+| `withDarkTheme`            | `boolean`                    | Enable dark theme                     |
+| `withShadow`               | `boolean`                    | Add shadow effect                     |
 | `withMask`                 | `boolean`                    | Enable country-specific phone masking |
-| `autoFocus`                | `boolean`                    | Auto focus input                     |
-| `defaultCode`              | `CountryCode`                | Default country code                 |
+| `autoFocus`                | `boolean`                    | Auto focus input                      |
+| `defaultCode`              | `CountryCode`                | Default country code                  |
 | `defaultCallingCode`       | `string`                     | Default calling code                  |
-| `value`                    | `string`                     | Controlled input value               |
-| `defaultValue`             | `string`                     | Default phone number value           |
-| `disabled`                 | `boolean`                    | Disable input                        |
-| `disableArrowIcon`         | `boolean`                    | Hide the dropdown arrow icon         |
-| `placeholder`              | `string`                     | Input placeholder text               |
-| `onChangeCountry`          | `(country: Country) => void` | Callback when country changes        |
-| `onChangeText`             | `(text: string) => void`     | Callback when input text changes     |
-| `onChangeFormattedText`    | `(text: string) => void`     | Callback with formatted phone number |
-| `onBlur`                   | `() => void`                 | Callback when input loses focus      |
-| `onFocus`                  | `() => void`                 | Callback when input gains focus      |
-| `renderDropdownImage`      | `JSX.Element`                | Custom dropdown icon component       |
-| `containerStyle`           | `StyleProp<ViewStyle>`       | Container style                      |
-| `textContainerStyle`       | `StyleProp<ViewStyle>`       | Text input container style           |
-| `textInputProps`           | `TextInputProps`             | Additional TextInput props           |
-| `textInputStyle`           | `StyleProp<TextStyle>`       | Text input style                     |
-| `codeTextStyle`            | `StyleProp<TextStyle>`       | Country code text style              |
-| `flagButtonStyle`          | `StyleProp<ViewStyle>`       | Flag button container style          |
-| `countryPickerButtonStyle` | `StyleProp<ViewStyle>`       | Country picker button style          |
-| `layout`                   | `"first" \| "second"`        | Layout style                         |
-| `filterProps`              | `CountryFilterProps`         | Country filter props                 |
-| `countryPickerProps`       | `CountryPickerModalProps`    | Country picker modal props           |
-| `flagSize`                 | `number`                     | Size of the country flag             |
-| `showCountryCode`          | `boolean`                    | Show the country code                |
+| `value`                    | `string`                     | Controlled input value                |
+| `defaultValue`             | `string`                     | Default phone number value            |
+| `disabled`                 | `boolean`                    | Disable input                         |
+| `disableArrowIcon`         | `boolean`                    | Hide the dropdown arrow icon          |
+| `placeholder`              | `string`                     | Input placeholder text                |
+| `onChangeCountry`          | `(country: Country) => void` | Callback when country changes         |
+| `onChangeText`             | `(text: string) => void`     | Callback when input text changes      |
+| `onChangeFormattedText`    | `(text: string) => void`     | Callback with formatted phone number  |
+| `onBlur`                   | `() => void`                 | Callback when input loses focus       |
+| `onFocus`                  | `() => void`                 | Callback when input gains focus       |
+| `renderDropdownImage`      | `JSX.Element`                | Custom dropdown icon component        |
+| `containerStyle`           | `StyleProp<ViewStyle>`       | Container style                       |
+| `textContainerStyle`       | `StyleProp<ViewStyle>`       | Text input container style            |
+| `textInputProps`           | `TextInputProps`             | Additional TextInput props            |
+| `textInputStyle`           | `StyleProp<TextStyle>`       | Text input style                      |
+| `codeTextStyle`            | `StyleProp<TextStyle>`       | Country code text style               |
+| `flagButtonStyle`          | `StyleProp<ViewStyle>`       | Flag button container style           |
+| `countryPickerButtonStyle` | `StyleProp<ViewStyle>`       | Country picker button style           |
+| `layout`                   | `"first" \| "second"`        | Layout style                          |
+| `filterProps`              | `CountryFilterProps`         | Country filter props                  |
+| `countryPickerProps`       | `CountryPickerModalProps`    | Country picker modal props            |
+| `flagSize`                 | `number`                     | Size of the country flag              |
+| `showCountryCode`          | `boolean`                    | Show the country code                 |
 
 ## 🔧 Methods
 
 | Method                                  | Return Type                                    | Description                                               |
-|-----------------------------------------|------------------------------------------------|-----------------------------------------------------------|
+| --------------------------------------- | ---------------------------------------------- | --------------------------------------------------------- |
 | `getCountryCode`                        | `CountryCode`                                  | Get the currently selected country code                   |
 | `getCallingCode`                        | `CallingCode \| undefined`                     | Get the calling code for the selected country             |
 | `isValidNumber`                         | `boolean`                                      | Validate if the provided phone number is valid            |

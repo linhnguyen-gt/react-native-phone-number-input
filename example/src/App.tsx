@@ -2,7 +2,6 @@ import PhoneInput from "@linhnguyen96114/react-native-phone-input";
 import { useRef, useState } from "react";
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { Colors } from "react-native/Libraries/NewAppScreen";
 import type { PhoneInputRefType } from "../..";
 import BasicExample from "./BasicExample";
 import CustomStyledExample from "./CustomStyledExample";
@@ -198,7 +197,7 @@ const App = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.lighter
+        backgroundColor: "#F3F4F6"
     },
     header: {
         padding: 20,
