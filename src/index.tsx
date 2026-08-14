@@ -78,6 +78,9 @@ export type PhoneInputRefType = {
     };
 };
 
+/** Hoisted so the default is one shared object rather than a new one per render. */
+const EMPTY_FILTER_PROPS: CountryFilterProps = {};
+
 /**
  * Join a calling code onto a number without ever producing a string containing "undefined".
  * An empty number yields an empty string rather than a bare "+84", so a consumer can tell
@@ -102,7 +105,34 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
     const [modalVisible, setModalVisible] = React.useState<boolean>(false);
     const [countryCode, setCountryCode] = React.useState<CountryCode>(props.defaultCode || "IN");
 
-    const { withMask = false, disabled = false } = props;
+    const { withMask = false, disabled = false, layout = "first", flagSize } = props;
+
+    /**
+     * Consumer callbacks are held in a ref. They are almost always inline arrows, so listing
+     * them in a `useCallback` dependency array rebuilds the callback on every render — which
+     * is what made the memoization here decorative, and what re-rendered the whole picker
+     * subtree on every keystroke.
+     */
+    const callbacks = React.useRef({
+        onChangeText: props.onChangeText,
+        onChangeFormattedText: props.onChangeFormattedText,
+        onChangeCountry: props.onChangeCountry
+    });
+    React.useEffect(() => {
+        callbacks.current = {
+            onChangeText: props.onChangeText,
+            onChangeFormattedText: props.onChangeFormattedText,
+            onChangeCountry: props.onChangeCountry
+        };
+    }, [props.onChangeText, props.onChangeFormattedText, props.onChangeCountry]);
+
+    /**
+     * `onSelect` is handed down to every country row. Closing over `rawValue` directly would
+     * change its identity on every keystroke and re-render all ~250 of them, so the current
+     * value is read from a ref at call time instead. Selection is a user gesture, which always
+     * happens after the commit that updated this.
+     */
+    const rawValueRef = React.useRef("");
 
     /**
      * Controlled-ness is decided once, at mount, and never re-read. A component that switches
@@ -142,6 +172,10 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
     );
 
     React.useEffect(() => {
+        rawValueRef.current = rawValue;
+    }, [rawValue]);
+
+    React.useEffect(() => {
         const setupDefaultCallingCode = async () => {
             if (props.defaultCallingCode) {
                 // eslint-disable-next-line @typescript-eslint/no-shadow
@@ -164,18 +198,15 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
         loadDefaultCode();
     }, [props.defaultCode]);
 
-    const onSelect = React.useCallback(
-        (country: Country) => {
-            setCountryCode(country.cca2);
-            setCode(country.callingCode[0]);
+    const onSelect = React.useCallback((country: Country) => {
+        setCountryCode(country.cca2);
+        setCode(country.callingCode[0]);
 
-            // The masked display is derived from rawValue and countryCode, so changing the
-            // country re-masks on the next render. Nothing to re-apply by hand.
-            props.onChangeFormattedText?.(withCallingCode(rawValue, country.callingCode[0]));
-            props.onChangeCountry?.(country);
-        },
-        [rawValue, props]
-    );
+        // The masked display is derived from rawValue and countryCode, so changing the
+        // country re-masks on the next render. Nothing to re-apply by hand.
+        callbacks.current.onChangeFormattedText?.(withCallingCode(rawValueRef.current, country.callingCode[0]));
+        callbacks.current.onChangeCountry?.(country);
+    }, []);
 
     const onChangeText = React.useCallback(
         (text: string) => {
@@ -186,10 +217,10 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
                 setInternalValue(nextValue);
             }
 
-            props.onChangeText?.(nextValue);
-            props.onChangeFormattedText?.(withCallingCode(nextValue, code));
+            callbacks.current.onChangeText?.(nextValue);
+            callbacks.current.onChangeFormattedText?.(withCallingCode(nextValue, code));
         },
-        [code, withMask, isControlled, props]
+        [code, withMask, isControlled]
     );
 
     const renderDefaultDropdownImage = React.useMemo(() => {
@@ -197,12 +228,11 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
     }, []);
 
     const renderFlagButton = React.useCallback(() => {
-        const { layout = "first", flagSize } = props;
         if (layout === "first") {
             return <Flag countryCode={countryCode} flagSize={flagSize || DEFAULT_THEME.flagSize} />;
         }
         return null;
-    }, [countryCode, props]);
+    }, [countryCode, layout, flagSize]);
 
     React.useImperativeHandle(ref, () => ({
         getCountryCode: () => countryCode,
@@ -250,16 +280,19 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
         containerStyle,
         textContainerStyle,
         renderDropdownImage = renderDefaultDropdownImage,
-        countryPickerProps = {
-            theme: withDarkTheme ? DARK_THEME : DEFAULT_THEME
-        },
-        filterProps = {},
+        filterProps = EMPTY_FILTER_PROPS,
         countryPickerButtonStyle,
-        layout = "first",
         onBlur,
         onFocus,
         showCountryCode = true
     } = props;
+
+    // A fresh literal here changed `CountryPicker`'s props on every render, which is what put
+    // the whole picker subtree back through render on every keystroke.
+    const countryPickerProps = React.useMemo(
+        () => props.countryPickerProps ?? { theme: withDarkTheme ? DARK_THEME : DEFAULT_THEME },
+        [props.countryPickerProps, withDarkTheme]
+    );
 
     return (
         <CountryModalProvider>

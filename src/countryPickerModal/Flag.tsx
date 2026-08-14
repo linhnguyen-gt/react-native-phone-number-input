@@ -55,16 +55,13 @@ const ImageFlag: React.FC<FlagType> = memo(({ countryCode, flagSize }) => {
 });
 
 const EmojiFlag: React.FC<FlagType> = memo(({ countryCode, flagSize }) => {
-    const { getEmojiFlagAsync } = useContext();
-    const asyncResult = useAsync(getEmojiFlagAsync, [countryCode]);
-
-    if (asyncResult.loading) {
-        return <ActivityIndicator size={"small"} />;
-    }
+    // Synchronous: the emoji data set is bundled. This used to be a `useAsync` per row, which
+    // paid for a spinner and a second render 250 times over while scrolling.
+    const { getEmojiFlag } = useContext();
 
     return (
         <Text style={[styles.emojiFlag, { fontSize: flagSize }]} allowFontScaling={false}>
-            <Emoji {...{ name: asyncResult.result! }} />
+            <Emoji {...{ name: getEmojiFlag(countryCode) }} />
         </Text>
     );
 });

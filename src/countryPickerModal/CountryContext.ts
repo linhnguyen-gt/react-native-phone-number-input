@@ -1,6 +1,7 @@
 import * as React from "react";
 import { type TranslationLanguageCode } from "./types";
 import {
+    getEmojiFlag,
     getEmojiFlagAsync,
     getImageFlagAsync,
     getCountryNameAsync,
@@ -17,6 +18,7 @@ export interface CountryContextParam {
     getCountryNameAsync: typeof getCountryNameAsync;
     getImageFlagAsync: typeof getImageFlagAsync;
     getEmojiFlagAsync: typeof getEmojiFlagAsync;
+    getEmojiFlag: typeof getEmojiFlag;
     getCountriesAsync: typeof getCountriesAsync;
     getLetters: typeof getLetters;
     getCountryCallingCodeAsync: typeof getCountryCallingCodeAsync;
@@ -29,6 +31,7 @@ export const DEFAULT_COUNTRY_CONTEXT = {
     getCountryNameAsync,
     getImageFlagAsync,
     getEmojiFlagAsync,
+    getEmojiFlag,
     getCountriesAsync,
     getCountryCallingCodeAsync,
     getCountryCurrencyAsync,

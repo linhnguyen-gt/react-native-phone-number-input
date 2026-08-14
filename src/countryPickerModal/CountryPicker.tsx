@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, type ReactNode } from "react";
+import React, { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { FlatListProps, ImageSourcePropType, ImageStyle, ModalProps, StyleProp, ViewStyle } from "react-native";
 import type { Edge } from "react-native-safe-area-context";
 import { useContext } from "./CountryContext";
@@ -133,11 +133,15 @@ const CountryPicker: React.FC<CountryPickerProps> = ({
     const [loadError, setLoadError] = useState<unknown>(undefined);
     const [attempt, setAttempt] = useState<number>(0);
 
-    // Held in a ref so an inline arrow from the consumer does not restart the loader effect.
+    // Consumer callbacks are held in refs. They are inline arrows in practice, so depending on
+    // them directly restarts the loader effect and — via `onSelectClose`, which reaches every
+    // country row — re-renders the whole list on each parent render.
     const onErrorRef = useRef(onError);
+    const handlersRef = useRef({ onSelect, onOpen: handleOpen, onClose: handleClose });
     useEffect(() => {
         onErrorRef.current = onError;
-    }, [onError]);
+        handlersRef.current = { onSelect, onOpen: handleOpen, onClose: handleClose };
+    }, [onError, onSelect, handleOpen, handleClose]);
 
     const { translation, getCountriesAsync } = useContext();
 
@@ -145,26 +149,25 @@ const CountryPicker: React.FC<CountryPickerProps> = ({
         setVisible(props.visible || false);
     }, [props.visible]);
 
-    const onOpen = () => {
+    const onOpen = useCallback(() => {
         setVisible(true);
-        if (handleOpen) {
-            handleOpen();
-        }
-    };
-    const onClose = () => {
+        handlersRef.current.onOpen?.();
+    }, []);
+    const onClose = useCallback(() => {
         setFilter("");
         setVisible(false);
-        if (handleClose) {
-            handleClose();
-        }
-    };
+        handlersRef.current.onClose?.();
+    }, []);
 
-    const onSelectClose = (country: Country) => {
-        onSelect?.(country);
-        onClose();
-    };
-    const onFocus = () => setFilterFocus(true);
-    const onBlur = () => setFilterFocus(false);
+    const onSelectClose = useCallback(
+        (country: Country) => {
+            handlersRef.current.onSelect?.(country);
+            onClose();
+        },
+        [onClose]
+    );
+    const onFocus = useCallback(() => setFilterFocus(true), []);
+    const onBlur = useCallback(() => setFilterFocus(false), []);
     const flagProp = {
         allowFontScaling,
         countryCode,

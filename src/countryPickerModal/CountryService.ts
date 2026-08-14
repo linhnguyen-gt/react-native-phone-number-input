@@ -23,6 +23,18 @@ const localData: DataCountry = {
     imageCountries: undefined
 };
 
+/**
+ * The emoji data set is bundled, so it resolves synchronously. If this ever becomes a dynamic
+ * import, `getEmojiFlag` below has to go back to being async and `EmojiFlag` has to go back to
+ * rendering a loading state.
+ */
+const loadEmojiCountries = (): CountryMap => {
+    if (!localData.emojiCountries) {
+        localData.emojiCountries = require("./assets/data/countries-emoji.json");
+    }
+    return localData.emojiCountries!;
+};
+
 export const loadDataAsync = (
     (data: DataCountry) =>
     (dataType: FlagType = FlagType.EMOJI): Promise<CountryMap> => {
@@ -42,17 +54,18 @@ export const loadDataAsync = (
                     }
                     break;
                 default:
-                    if (!data.emojiCountries) {
-                        data.emojiCountries = require("./assets/data/countries-emoji.json");
-                        resolve(data.emojiCountries!);
-                    } else {
-                        resolve(data.emojiCountries);
-                    }
+                    resolve(loadEmojiCountries());
                     break;
             }
         });
     }
 )(localData);
+
+/**
+ * Synchronous emoji lookup. Every country row used to run an async hook for this, which cost a
+ * spinner and a second render per row while scrolling — for a value already in memory.
+ */
+export const getEmojiFlag = (countryCode: CountryCode = "FR"): string => loadEmojiCountries()[countryCode].flag;
 
 export const getEmojiFlagAsync = async (countryCode: CountryCode = "FR") => {
     const countries = await loadDataAsync();
@@ -185,24 +198,32 @@ const DEFAULT_FUSE_OPTION = {
     keys: ["name", "cca2", "callingCode"]
 };
 /**
+ * Build a searcher that owns one Fuse index over `data`.
+ *
+ * The caller decides how long that index lives. `CountryList` holds it in a `useMemo` keyed on
+ * `data`, so it is rebuilt when the country list changes and discarded with the component.
+ */
+export const createCountrySearch = (
+    data: Country[] = [],
+    options: IFuseOptions<Country> = DEFAULT_FUSE_OPTION
+): ((filter?: string) => Country[]) => {
+    if (data.length === 0) {
+        return () => [];
+    }
+    const fuse = new Fuse<Country>(data, options);
+    return (filter?: string) => (filter ? fuse.search(filter).map((r) => r.item) : data);
+};
+
+/**
  * Stateless on purpose. This used to hold a module-level `Fuse` index built from whichever
  * data set reached it first and never rebuilt, so a second picker searched the first picker's
- * countries. Callers that need the index to survive across renders own that lifetime — see
- * `CountryList`.
+ * countries. Callers that need the index to survive across renders use `createCountrySearch`.
  */
 export const search = (
     filter: string = "",
     data: Country[] = [],
     options: IFuseOptions<Country> = DEFAULT_FUSE_OPTION
-) => {
-    if (data.length === 0) {
-        return [];
-    }
-    if (!filter) {
-        return data;
-    }
-    return new Fuse<Country>(data, options).search(filter).map((r) => r.item);
-};
+) => createCountrySearch(data, options)(filter);
 const uniq = (arr: string[]) => Array.from(new Set(arr));
 
 export const getLetters = (countries: Country[]) => {

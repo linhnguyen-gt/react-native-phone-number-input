@@ -1,20 +1,21 @@
-import React, { memo, useEffect, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    Dimensions,
     FlatList,
     PixelRatio,
     ScrollView,
     StyleSheet,
     TouchableOpacity,
+    useWindowDimensions,
     View,
     type FlatListProps,
     type ListRenderItemInfo
 } from "react-native";
 import { useContext } from "./CountryContext";
+import { createCountrySearch } from "./CountryService";
 import { CountryText } from "./CountryText";
 import { useTheme } from "./CountryTheme";
 import { Flag } from "./Flag";
-import type { Country, Omit } from "./types";
+import type { Country } from "./types";
 
 const borderBottomWidth = 2 / PixelRatio.get();
 
@@ -135,10 +136,6 @@ const CountryItem: React.FC<CountryItemProps> = ({
 
 const MemoCountryItem: React.FC<CountryItemProps> = memo(CountryItem);
 
-const renderItem =
-    (props: Omit<CountryItemProps, "country">) =>
-    ({ item: country }: ListRenderItemInfo<Country>) => <MemoCountryItem {...{ country, ...props }} />;
-
 interface CountryListProps {
     data: Country[];
     /** Set when the country list failed to load. An empty list and a failed load look the
@@ -160,8 +157,6 @@ const ItemSeparatorComponent = () => {
     return <View style={[styles.sep, { borderBottomColor: primaryColorVariant }]} />;
 };
 
-const { height } = Dimensions.get("window");
-
 const CountryList: React.FC<CountryListProps> = (props) => {
     const {
         data,
@@ -180,7 +175,11 @@ const CountryList: React.FC<CountryListProps> = (props) => {
     const flatListRef = useRef<FlatList<Country>>(null);
     const [letter, setLetter] = useState<string>("");
     const { itemHeight, backgroundColor } = useTheme();
-    const indexLetter = data.map((country: Country) => (country.name as string).substr(0, 1)).join("");
+    const { height } = useWindowDimensions();
+    const indexLetter = useMemo(
+        () => data.map((country: Country) => (country.name as string).substr(0, 1)).join(""),
+        [data]
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-shadow
     const scrollTo = (letter?: string, animated: boolean = true) => {
@@ -197,8 +196,23 @@ const CountryList: React.FC<CountryListProps> = (props) => {
             scrollTo(letter);
         }
     };
-    const { search, getLetters } = useContext();
-    const letters = getLetters(data);
+    const { getLetters } = useContext();
+    const letters = useMemo(() => getLetters(data), [getLetters, data]);
+
+    // The Fuse index lives here and nowhere else. It used to be a module-level `let` in
+    // CountryService, shared by every picker in the app and built from whichever data set
+    // reached it first; keying it on `data` there would instead have leaked one index per
+    // mount. Scoped to this component, it is discarded with it.
+    const searchCountries = useMemo(() => createCountrySearch(data), [data]);
+    const visibleCountries = useMemo(() => searchCountries(filter), [searchCountries, filter]);
+
+    const renderCountryItem = useCallback(
+        ({ item: country }: ListRenderItemInfo<Country>) => (
+            <MemoCountryItem {...{ country, withEmoji, withFlag, withCallingCode, withCurrency, onSelect }} />
+        ),
+        [withEmoji, withFlag, withCallingCode, withCurrency, onSelect]
+    );
+
     useEffect(() => {
         if (data && data.length > 0 && filterFocus && !filter) {
             scrollTo(letters[0], false);
@@ -206,6 +220,8 @@ const CountryList: React.FC<CountryListProps> = (props) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filterFocus]);
 
+    // Read per render, not once at module scope: the module-scope value was captured before
+    // any rotation and never updated.
     const initialNumToRender = Math.round(height / (itemHeight || 1));
 
     if (loadError && data.length === 0) {
@@ -230,15 +246,9 @@ const CountryList: React.FC<CountryListProps> = (props) => {
                     offset: (itemHeight! + borderBottomWidth) * index,
                     index
                 })}
-                renderItem={renderItem({
-                    withEmoji,
-                    withFlag,
-                    withCallingCode,
-                    withCurrency,
-                    onSelect
-                })}
+                renderItem={renderCountryItem}
                 {...{
-                    data: search(filter, data),
+                    data: visibleCountries,
                     keyExtractor: (item: Country) => item?.cca2,
                     onScrollToIndexFailed,
                     ItemSeparatorComponent,

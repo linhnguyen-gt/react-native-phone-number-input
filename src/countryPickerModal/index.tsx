@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { FlatListProps, ModalProps, StyleProp, ViewStyle } from "react-native";
 import type { Edge } from "react-native-safe-area-context";
 import { CountryProvider, DEFAULT_COUNTRY_CONTEXT } from "./CountryContext";
@@ -53,9 +53,15 @@ const Main: React.FC<CountryPickerModalProps> = ({
     translation,
     ...props
 }) => {
+    // Both of these used to be fresh object literals on every render. A changed context value
+    // re-renders every consumer regardless of `React.memo`, which is what every memoized leaf
+    // below here depends on — so this is the prerequisite for the rest, not a micro-optimisation.
+    const mergedTheme = useMemo(() => ({ ...DEFAULT_THEME, ...theme }), [theme]);
+    const countryContext = useMemo(() => ({ ...DEFAULT_COUNTRY_CONTEXT, translation }), [translation]);
+
     return (
-        <ThemeProvider theme={{ ...DEFAULT_THEME, ...theme }}>
-            <CountryProvider value={{ ...DEFAULT_COUNTRY_CONTEXT, translation }}>
+        <ThemeProvider theme={mergedTheme}>
+            <CountryProvider value={countryContext}>
                 <CountryPicker onSelect={onSelect} withEmoji={withEmoji} {...props} />
             </CountryProvider>
         </ThemeProvider>
