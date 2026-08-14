@@ -184,7 +184,12 @@ const DEFAULT_FUSE_OPTION = {
     minMatchCharLength: 1,
     keys: ["name", "cca2", "callingCode"]
 };
-let fuse: Fuse<Country>;
+/**
+ * Stateless on purpose. This used to hold a module-level `Fuse` index built from whichever
+ * data set reached it first and never rebuilt, so a second picker searched the first picker's
+ * countries. Callers that need the index to survive across renders own that lifetime — see
+ * `CountryList`.
+ */
 export const search = (
     filter: string = "",
     data: Country[] = [],
@@ -193,15 +198,10 @@ export const search = (
     if (data.length === 0) {
         return [];
     }
-    if (!fuse) {
-        fuse = new Fuse<Country>(data, options);
-    }
-    if (filter && filter !== "") {
-        const result = fuse.search(filter);
-        return result.map((r) => r.item);
-    } else {
+    if (!filter) {
         return data;
     }
+    return new Fuse<Country>(data, options).search(filter).map((r) => r.item);
 };
 const uniq = (arr: string[]) => Array.from(new Set(arr));
 

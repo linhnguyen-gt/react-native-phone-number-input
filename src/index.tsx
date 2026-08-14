@@ -78,6 +78,14 @@ export type PhoneInputRefType = {
     };
 };
 
+/**
+ * Join a calling code onto a number without ever producing a string containing "undefined".
+ * An empty number yields an empty string rather than a bare "+84", so a consumer can tell
+ * "nothing entered" from "entered, and here is the country".
+ */
+const withCallingCode = (rawValue: string, callingCode: string | undefined): string =>
+    rawValue.length > 0 && callingCode ? `+${callingCode}${rawValue}` : rawValue;
+
 const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, ref) => {
     const getCountryCodeByCallingCode = React.useCallback(async (callingCode: string) => {
         const countries = await loadDataAsync();
@@ -91,11 +99,47 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
     const [code, setCode] = React.useState<string | undefined>(
         props.defaultCallingCode || (props.defaultCode ? undefined : "91")
     );
-    const [number, setNumber] = React.useState<string | undefined>(undefined);
-    const [displayValue, setDisplayValue] = React.useState<string>("");
     const [modalVisible, setModalVisible] = React.useState<boolean>(false);
     const [countryCode, setCountryCode] = React.useState<CountryCode>(props.defaultCode || "IN");
-    const [disabled, setDisabled] = React.useState<boolean>(props.disabled || false);
+
+    const { withMask = false, disabled = false } = props;
+
+    /**
+     * Controlled-ness is decided once, at mount, and never re-read. A component that switches
+     * modes mid-life is a consumer bug; coping with it silently is how the previous version
+     * ended up unable to tell an empty field from an unset one.
+     *
+     * `defaultValue` seeds internal state here and is deliberately not a dependency of anything
+     * afterwards — it is a seed, not a binding.
+     */
+    const isControlled = React.useRef(props.value !== undefined).current;
+    const [internalValue, setInternalValue] = React.useState<string>(() =>
+        isControlled ? "" : (props.defaultValue ?? "")
+    );
+
+    React.useEffect(() => {
+        if (__DEV__ && isControlled !== (props.value !== undefined)) {
+            console.warn(
+                "PhoneInput: switching between controlled and uncontrolled is not supported. " +
+                    `The component mounted ${isControlled ? "controlled" : "uncontrolled"} and stays that way. ` +
+                    'If a form library supplies `undefined` on the first render, pass "" instead.'
+            );
+        }
+    }, [isControlled, props.value]);
+
+    /**
+     * The single source of truth for what the user has entered.
+     *
+     * Under `withMask` the parent stores raw digits — that is what `onChangeText` emits — and
+     * the mask is applied on the way to the screen. Without masking the value passes through
+     * verbatim, as it always has.
+     */
+    const rawValue = isControlled ? (withMask ? removeMask(props.value ?? "") : (props.value ?? "")) : internalValue;
+
+    const displayValue = React.useMemo(
+        () => (withMask ? applyMask(rawValue, getMaskForCountry(countryCode)) : rawValue),
+        [withMask, rawValue, countryCode]
+    );
 
     React.useEffect(() => {
         const setupDefaultCallingCode = async () => {
@@ -120,90 +164,32 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
         loadDefaultCode();
     }, [props.defaultCode]);
 
-    React.useEffect(() => {
-        if (props.disabled !== disabled) {
-            setDisabled(props.disabled || false);
-        }
-    }, [disabled, props.disabled]);
-
     const onSelect = React.useCallback(
         (country: Country) => {
             setCountryCode(country.cca2);
             setCode(country.callingCode[0]);
 
-            // Re-apply mask with new country pattern if masking is enabled
-            if (props.withMask && number) {
-                const newMask = getMaskForCountry(country.cca2);
-                const masked = applyMask(number, newMask);
-                setDisplayValue(masked);
-            }
-
-            if (props.onChangeFormattedText) {
-                if (country.callingCode[0]) {
-                    props.onChangeFormattedText(`+${country.callingCode[0]}${number}`);
-                } else {
-                    props.onChangeFormattedText(number || "");
-                }
-            }
-
-            if (props.onChangeCountry) {
-                props.onChangeCountry(country);
-            }
+            // The masked display is derived from rawValue and countryCode, so changing the
+            // country re-masks on the next render. Nothing to re-apply by hand.
+            props.onChangeFormattedText?.(withCallingCode(rawValue, country.callingCode[0]));
+            props.onChangeCountry?.(country);
         },
-        [number, props]
+        [rawValue, props]
     );
 
     const onChangeText = React.useCallback(
         (text: string) => {
-            const { withMask = false } = props;
+            // Under a mask the user types into the formatted string; only the digits are real.
+            const nextValue = withMask ? removeMask(text) : text;
 
-            if (withMask) {
-                // Get the mask pattern for current country
-                const mask = getMaskForCountry(countryCode);
-
-                // Remove mask from input to get raw digits
-                const rawDigits = removeMask(text);
-
-                // Apply mask to get display value
-                const masked = applyMask(rawDigits, mask);
-
-                // Update display value
-                setDisplayValue(masked);
-
-                // Store raw digits internally
-                setNumber(rawDigits);
-
-                // Pass raw digits to onChangeText callback
-                if (props.onChangeText) {
-                    props.onChangeText(rawDigits);
-                }
-
-                // Pass masked value with country code to onChangeFormattedText
-                if (props.onChangeFormattedText) {
-                    if (code) {
-                        props.onChangeFormattedText(rawDigits.length > 0 ? `+${code}${rawDigits}` : rawDigits);
-                    } else {
-                        props.onChangeFormattedText(rawDigits);
-                    }
-                }
-            } else {
-                // Original behavior when masking is disabled
-                setNumber(text);
-                setDisplayValue(text);
-
-                if (props.onChangeText) {
-                    props.onChangeText(text);
-                }
-                if (props.onChangeFormattedText) {
-                    if (code) {
-                        props.onChangeFormattedText(text.length > 0 ? `+${code}${text}` : text);
-                    } else {
-                        props.onChangeFormattedText(text);
-                    }
-                }
+            if (!isControlled) {
+                setInternalValue(nextValue);
             }
+
+            props.onChangeText?.(nextValue);
+            props.onChangeFormattedText?.(withCallingCode(nextValue, code));
         },
-        [code, countryCode, props]
+        [code, withMask, isControlled, props]
     );
 
     const renderDefaultDropdownImage = React.useMemo(() => {
@@ -236,29 +222,17 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
                 const parsedNumber = phoneUtil.parse(cleanNumber, countryCode);
                 return phoneUtil.isValidNumber(parsedNumber);
             } catch {
-                try {
-                    if (code) {
-                        let cleanNumber = phoneNumber.replace(/[^\d+]/g, "");
-                        if (cleanNumber.startsWith("0")) {
-                            cleanNumber = cleanNumber.substring(1);
-                        }
-                        const parsedNumber = phoneUtil.parse(cleanNumber, code);
-                        return phoneUtil.isValidNumber(parsedNumber);
-                    }
-                } catch {
-                    return false;
-                }
+                // There used to be a fallback here that re-parsed with `code` — a calling code
+                // where libphonenumber wants a region code. It threw for every input without a
+                // `+` prefix and was unreachable for inputs with one.
                 return false;
             }
         },
         getNumberAfterPossiblyEliminatingZero: () => {
-            let currentNumber = number;
-            if (currentNumber && currentNumber.length > 0 && currentNumber.startsWith("0")) {
-                currentNumber = currentNumber.slice(1);
-            }
+            const currentNumber = rawValue.startsWith("0") ? rawValue.slice(1) : rawValue;
             return {
                 number: currentNumber,
-                formattedNumber: code ? `+${code}${currentNumber}` : currentNumber
+                formattedNumber: withCallingCode(currentNumber, code)
             };
         }
     }));
@@ -266,7 +240,6 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
     const {
         withShadow,
         withDarkTheme,
-        withMask = false,
         codeTextStyle,
         textInputProps,
         textInputStyle,
@@ -332,11 +305,7 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
                         style={[styles.numberText, textInputStyle]}
                         placeholder={placeholder}
                         onChangeText={onChangeText}
-                        value={
-                            withMask
-                                ? displayValue || props.value || props.defaultValue || ""
-                                : number || props.value || props.defaultValue || ""
-                        }
+                        value={displayValue}
                         editable={!disabled}
                         selectionColor="black"
                         keyboardAppearance={withDarkTheme ? "dark" : "default"}

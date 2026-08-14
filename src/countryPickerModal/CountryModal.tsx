@@ -1,10 +1,9 @@
 import * as React from "react";
-import { type ModalProps, Platform, StyleSheet } from "react-native";
+import { Modal, type ModalProps, Platform, StyleSheet } from "react-native";
 import { type Edge, SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import AnimatedModal from "./AnimatedModal";
 import { CountryModalContext } from "./CountryModalProvider";
 import { useTheme } from "./CountryTheme";
-import { Modal } from "./Modal";
 
 const styles = StyleSheet.create({
     container: {
