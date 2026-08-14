@@ -2,7 +2,6 @@
     "name": "@linhnguyen96114/react-native-phone-input",
     "version": "3.8.0",
     "description": "React Native component for phone number",
-    "packageManager": "yarn@4.9.1",
     "source": "./src/index.tsx",
     "main": "./lib/commonjs/index.js",
     "module": "./lib/module/index.js",
@@ -40,7 +39,7 @@
         "index.d.ts"
     ],
     "scripts": {
-        "example": "yarn workspace react-native-phone-number-input-example",
+        "example": "npm run --workspace react-native-phone-number-input-example",
         "test": "jest",
         "typecheck": "tsc",
         "lint": "eslint \"**/*.{js,ts,tsx}\"",
@@ -100,8 +99,11 @@
         "turbo": "^2.8.20",
         "typescript": "^5.8.3"
     },
-    "resolutions": {
+    "overrides": {
         "@types/react": "^19.2.0"
+    },
+    "engines": {
+        "node": ">= 22.11.0"
     },
     "peerDependencies": {
         "react": "*",
@@ -222,8 +224,7 @@
             [
                 "typescript",
                 {
-                    "project": "tsconfig.build.json",
-                    "esm": true
+                    "project": "tsconfig.build.json"
                 }
             ]
         ]
@@ -242,5 +243,9 @@
     },
     "directories": {
         "example": "example"
+    },
+    "allowScripts": {
+        "@evilmartians/lefthook": true,
+        "fsevents": true
     }
 }

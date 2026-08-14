@@ -30,22 +30,13 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: "22"
+                  node-version-file: .nvmrc
                   registry-url: "https://registry.npmjs.org"
-
-            - name: Setup Yarn
-              run: |
-                  rm -rf .yarn .yarnrc.yml
-                  corepack enable
-                  corepack prepare yarn@3.6.1 --activate
-                  echo 'nodeLinker: node-modules' > .yarnrc.yml
-                  echo 'enableGlobalCache: true' >> .yarnrc.yml
-                  echo 'enableImmutableInstalls: false' >> .yarnrc.yml
+                  cache: npm
+                  cache-dependency-path: package-lock.json
 
             - name: Install dependencies
-              run: |
-                  yarn install
-                  yarn add -D @babel/core@^7.20.0 @babel/preset-env@^7.20.0
+              run: npm ci
 
             - name: Configure Git
               run: |
@@ -103,10 +94,10 @@ jobs:
 
                   if [ -n "$NPM_TOKEN" ]; then
                     echo "NPM_TOKEN is set, will publish to npm"
-                    yarn release --ci
+                    npm run release -- --ci
                   else
                     echo "NPM_TOKEN is not set, skipping npm publish"
-                    yarn release --ci --no-npm
+                    npm run release -- --ci --no-npm
                   fi
 
             - name: Extract Latest Changelog

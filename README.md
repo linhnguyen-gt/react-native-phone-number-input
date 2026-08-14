@@ -36,11 +36,7 @@
 ## 🚀 Installation
 
 ```bash
-# Using npm
-npm i @linhnguyen96114/react-native-phone-input
-
-# Using yarn
-yarn add @linhnguyen96114/react-native-phone-input
+npm install @linhnguyen96114/react-native-phone-input
 
 # For iOS
 cd ios && pod install

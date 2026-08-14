@@ -5,30 +5,12 @@ runs:
     using: composite
     steps:
         - name: Setup Node.js
-          uses: actions/setup-node@v3
+          uses: actions/setup-node@v4
           with:
               node-version-file: .nvmrc
-
-        - name: Setup Yarn
-          run: |
-              corepack enable
-              corepack prepare yarn@4.9.1 --activate
-          shell: bash
-
-        - name: Cache dependencies
-          id: yarn-cache
-          uses: actions/cache@v3
-          with:
-              path: |
-                  **/node_modules
-                  .yarn/cache
-                  .yarn/install-state.gz
-              key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}-${{ hashFiles('**/package.json', '!node_modules/**') }}
-              restore-keys: |
-                  ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
-                  ${{ runner.os }}-yarn-
+              cache: npm
+              cache-dependency-path: package-lock.json
 
         - name: Install dependencies
-          if: steps.yarn-cache.outputs.cache-hit != 'true'
-          run: yarn install --immutable
+          run: npm ci
           shell: bash
