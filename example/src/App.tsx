@@ -183,7 +183,9 @@ const App = () => {
     return (
         <SafeAreaProvider>
             <SafeAreaView style={styles.container}>
-                <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+                {/* backgroundColor was removed in React Native 0.87, where Android draws
+                    edge-to-edge and the bar is always transparent. */}
+                <StatusBar barStyle="dark-content" />
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Phone Input Examples</Text>
                     <Text style={styles.headerSubtitle}>React Native Phone Number Input Demo</Text>
