@@ -75,3 +75,6 @@ android/generated
 docs/
 plans/
 .codegraph
+
+# Local Xcode node path (machine specific)
+example/ios/.xcode.env.local
