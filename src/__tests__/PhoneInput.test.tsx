@@ -1,198 +1,113 @@
-describe("PhoneInput", () => {
-    it("should be a valid module", () => {
-        expect(true).toBe(true);
+/**
+ * Characterization tests: behaviour that must survive this release unchanged.
+ *
+ * These render the component. The previous version of this file asserted on object literals
+ * declared inside the test and covered none of the source.
+ */
+import { renderPhoneInput } from "../test-utils/render-phone-input";
+
+describe("defaults", () => {
+    it("starts on IN / +91 when nothing is configured", async () => {
+        const input = await renderPhoneInput({});
+
+        expect(input.ref.current!.getCountryCode()).toBe("IN");
+        expect(input.callingCode()).toBe("+91");
     });
 
-    it("should have basic functionality", () => {
-        const mockFunction = jest.fn();
-        expect(typeof mockFunction).toBe("function");
+    it("resolves the calling code from defaultCode", async () => {
+        const input = await renderPhoneInput({ defaultCode: "VN" });
+
+        expect(input.ref.current!.getCountryCode()).toBe("VN");
+        expect(input.callingCode()).toBe("+84");
     });
 
-    describe("Props handling", () => {
-        it("should handle defaultCode prop", () => {
-            const props = {
-                defaultCode: "US",
-                placeholder: "Enter phone number"
-            };
-            expect(props.defaultCode).toBe("US");
-            expect(props.placeholder).toBe("Enter phone number");
-        });
+    it("resolves the country from defaultCallingCode", async () => {
+        const input = await renderPhoneInput({ defaultCallingCode: "84" });
 
-        it("should handle different country codes", () => {
-            const countryCodes = ["US", "VN", "GB", "CA", "AU"];
-            countryCodes.forEach((code) => {
-                expect(typeof code).toBe("string");
-                expect(code.length).toBe(2);
-            });
-        });
+        expect(input.ref.current!.getCountryCode()).toBe("VN");
+        expect(input.callingCode()).toBe("+84");
+    });
+});
 
-        it("should handle defaultCallingCode prop", () => {
-            const props = {
-                defaultCallingCode: "1",
-                defaultCode: "US"
-            };
-            expect(props.defaultCallingCode).toBe("1");
-            expect(props.defaultCode).toBe("US");
-        });
+describe("layout and visibility props", () => {
+    it("renders the calling code beside the input in the first layout", async () => {
+        const input = await renderPhoneInput({ defaultCode: "VN", layout: "first" });
 
-        it("should handle value and defaultValue props", () => {
-            const controlledProps = { value: "1234567890" };
-            const uncontrolledProps = { defaultValue: "0987654321" };
-
-            expect(controlledProps.value).toBe("1234567890");
-            expect(uncontrolledProps.defaultValue).toBe("0987654321");
-        });
-
-        it("should handle disabled state", () => {
-            const enabledProps = { disabled: false };
-            const disabledProps = { disabled: true };
-
-            expect(enabledProps.disabled).toBe(false);
-            expect(disabledProps.disabled).toBe(true);
-        });
-
-        it("should handle theme props", () => {
-            const lightTheme = { withDarkTheme: false };
-            const darkTheme = { withDarkTheme: true };
-
-            expect(lightTheme.withDarkTheme).toBe(false);
-            expect(darkTheme.withDarkTheme).toBe(true);
-        });
-
-        it("should handle layout props", () => {
-            const firstLayout = { layout: "first" as const };
-            const secondLayout = { layout: "second" as const };
-
-            expect(firstLayout.layout).toBe("first");
-            expect(secondLayout.layout).toBe("second");
-        });
-
-        it("should handle styling props", () => {
-            const styleProps = {
-                containerStyle: { backgroundColor: "red" },
-                textInputStyle: { fontSize: 16 },
-                codeTextStyle: { color: "blue" },
-                flagButtonStyle: { borderRadius: 8 }
-            };
-
-            expect(styleProps.containerStyle.backgroundColor).toBe("red");
-            expect(styleProps.textInputStyle.fontSize).toBe(16);
-            expect(styleProps.codeTextStyle.color).toBe("blue");
-            expect(styleProps.flagButtonStyle.borderRadius).toBe(8);
-        });
-
-        it("should handle callback props", () => {
-            const mockCallbacks = {
-                onChangeText: jest.fn(),
-                onChangeFormattedText: jest.fn(),
-                onChangeCountry: jest.fn(),
-                onBlur: jest.fn(),
-                onFocus: jest.fn()
-            };
-
-            expect(typeof mockCallbacks.onChangeText).toBe("function");
-            expect(typeof mockCallbacks.onChangeFormattedText).toBe("function");
-            expect(typeof mockCallbacks.onChangeCountry).toBe("function");
-            expect(typeof mockCallbacks.onBlur).toBe("function");
-            expect(typeof mockCallbacks.onFocus).toBe("function");
-        });
+        expect(input.callingCode()).toBe("+84");
     });
 
-    describe("Phone number validation", () => {
-        it("should validate US phone numbers", () => {
-            const validUSNumbers = ["1234567890", "123-456-7890", "(123) 456-7890"];
-            const invalidUSNumbers = ["123", "123456789", "abc123"];
+    it("renders the calling code inside the flag button in the second layout", async () => {
+        const input = await renderPhoneInput({ defaultCode: "VN", layout: "second" });
 
-            validUSNumbers.forEach((number) => {
-                expect(number.length).toBeGreaterThanOrEqual(10);
-            });
-
-            invalidUSNumbers.forEach((number) => {
-                expect(number.length).toBeLessThan(10);
-            });
-        });
-
-        it("should validate VN phone numbers", () => {
-            const validVNNumbers = ["0123456789", "0987654321"];
-            const invalidVNNumbers = ["123", "123456789"];
-
-            validVNNumbers.forEach((number) => {
-                expect(number.length).toBe(10);
-                expect(number.startsWith("0")).toBe(true);
-            });
-
-            invalidVNNumbers.forEach((number) => {
-                expect(number.length).toBeLessThan(10);
-            });
-        });
+        expect(input.callingCode()).toBe("+84");
     });
 
-    describe("Country picker functionality", () => {
-        it("should handle country selection", () => {
-            const mockCountry = {
-                cca2: "US",
-                callingCode: ["1"],
-                name: "United States"
-            };
+    it("hides the calling code when showCountryCode is false", async () => {
+        const input = await renderPhoneInput({ defaultCode: "VN", showCountryCode: false });
 
-            expect(mockCountry.cca2).toBe("US");
-            expect(mockCountry.callingCode).toEqual(["1"]);
-            expect(mockCountry.name).toBe("United States");
-        });
-
-        it("should handle country filter", () => {
-            const filterProps = {
-                placeholder: "Search countries",
-                autoFocus: true
-            };
-
-            expect(filterProps.placeholder).toBe("Search countries");
-            expect(filterProps.autoFocus).toBe(true);
-        });
+        expect(input.callingCode()).toBeUndefined();
     });
 
-    describe("Accessibility", () => {
-        it("should handle accessibility props", () => {
-            const accessibilityProps = {
-                placeholder: "Enter phone number",
-                autoFocus: true,
-                keyboardType: "number-pad"
-            };
+    it("passes the placeholder through", async () => {
+        const input = await renderPhoneInput({ placeholder: "Phone number" });
 
-            expect(accessibilityProps.placeholder).toBe("Enter phone number");
-            expect(accessibilityProps.autoFocus).toBe(true);
-            expect(accessibilityProps.keyboardType).toBe("number-pad");
-        });
+        expect(input.view.getByPlaceholderText("Phone number")).toBeTruthy();
     });
 
-    describe("Edge cases", () => {
-        it("should handle empty values", () => {
-            const emptyProps = {
-                value: "",
-                defaultValue: "",
-                placeholder: ""
-            };
+    it("makes the field read-only when disabled", async () => {
+        const input = await renderPhoneInput({ disabled: true });
 
-            expect(emptyProps.value).toBe("");
-            expect(emptyProps.defaultValue).toBe("");
-            expect(emptyProps.placeholder).toBe("");
-        });
+        expect(input.view.getByTestId("phone-input-text").props.editable).toBe(false);
+    });
+});
 
-        it("should handle undefined props", () => {
-            const props = {
-                value: undefined,
-                defaultValue: undefined,
-                disabled: undefined
-            };
+describe("onChangeFormattedText", () => {
+    it("prefixes the calling code", async () => {
+        const onChangeFormattedText = jest.fn();
+        const input = await renderPhoneInput({ defaultCode: "VN", onChangeFormattedText });
 
-            expect(props.value).toBeUndefined();
-            expect(props.defaultValue).toBeUndefined();
-            expect(props.disabled).toBeUndefined();
-        });
+        await input.type("912345678");
 
-        it("should handle very long phone numbers", () => {
-            const longNumber = "12345678901234567890";
-            expect(longNumber.length).toBeGreaterThan(15);
-        });
+        expect(onChangeFormattedText).toHaveBeenLastCalledWith("+84912345678");
+    });
+
+    it("emits the empty string rather than a bare calling code when the field is cleared", async () => {
+        const onChangeFormattedText = jest.fn();
+        const input = await renderPhoneInput({ defaultCode: "VN", onChangeFormattedText });
+
+        await input.type("912345678");
+        await input.clear();
+
+        expect(onChangeFormattedText).toHaveBeenLastCalledWith("");
+    });
+});
+
+describe("isValidNumber", () => {
+    // Characterization, not a red test. The fallback branch phase 02 deletes is unreachable in
+    // both directions: it passes a calling code where a region code belongs, so it throws for
+    // any input without a `+` prefix, and with a `+` prefix the primary parse already succeeded.
+    // These four assertions must read identically before and after that deletion.
+    it("accepts a valid E.164 number", async () => {
+        const input = await renderPhoneInput({ defaultCode: "IN" });
+
+        expect(input.ref.current!.isValidNumber("+919876543210")).toBe(true);
+    });
+
+    it("accepts a national number for the selected country", async () => {
+        const input = await renderPhoneInput({ defaultCode: "IN" });
+
+        expect(input.ref.current!.isValidNumber("09876543210")).toBe(true);
+    });
+
+    it("rejects a number that is too short", async () => {
+        const input = await renderPhoneInput({ defaultCode: "IN" });
+
+        expect(input.ref.current!.isValidNumber("123")).toBe(false);
+    });
+
+    it("rejects an empty string", async () => {
+        const input = await renderPhoneInput({ defaultCode: "IN" });
+
+        expect(input.ref.current!.isValidNumber("")).toBe(false);
     });
 });

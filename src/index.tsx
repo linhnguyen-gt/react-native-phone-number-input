@@ -59,7 +59,11 @@ export type PhoneInputProps = {
     countryPickerButtonStyle?: StyleProp<ViewStyle>;
     layout?: "first" | "second";
     filterProps?: CountryFilterProps;
-    countryPickerProps?: CountryPickerModalProps;
+    /**
+     * Overrides forwarded to the country picker. `Partial` because `PhoneInput` supplies
+     * `countryCode` and `onSelect` itself — requiring them here made the prop unusable.
+     */
+    countryPickerProps?: Partial<CountryPickerModalProps>;
     flagSize?: number;
     showCountryCode?: boolean;
 };
@@ -288,6 +292,7 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
         <CountryModalProvider>
             <View style={[styles.container, withShadow && styles.shadow, containerStyle]}>
                 <TouchableOpacity
+                    testID="phone-input-country-button"
                     style={[
                         styles.flagButtonView,
                         layout === "second" && styles.flagButtonExtraWidth,
@@ -310,15 +315,20 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
                         {...countryPickerProps}
                     />
                     {showCountryCode && code && layout === "second" && (
-                        <Text style={[styles.codeText, codeTextStyle]}>{`+${code}`}</Text>
+                        <Text testID="phone-input-calling-code" style={[styles.codeText, codeTextStyle]}>
+                            {`+${code}`}
+                        </Text>
                     )}
                     {!disableArrowIcon && <React.Fragment>{renderDropdownImage}</React.Fragment>}
                 </TouchableOpacity>
                 <View style={[styles.textContainer, textContainerStyle]}>
                     {showCountryCode && code && layout === "first" && (
-                        <Text style={[styles.codeText, codeTextStyle]}>{`+${code}`}</Text>
+                        <Text testID="phone-input-calling-code" style={[styles.codeText, codeTextStyle]}>
+                            {`+${code}`}
+                        </Text>
                     )}
                     <TextInput
+                        testID="phone-input-text"
                         style={[styles.numberText, textInputStyle]}
                         placeholder={placeholder}
                         onChangeText={onChangeText}
