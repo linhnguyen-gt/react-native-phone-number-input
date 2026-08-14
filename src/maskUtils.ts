@@ -1,11 +1,18 @@
+import { PhoneNumberFormat, PhoneNumberUtil } from "google-libphonenumber";
+
 import type { CountryCode } from "./countryPickerModal";
+
+const phoneUtil = PhoneNumberUtil.getInstance();
 
 /**
  * Phone number mask patterns for different countries
  * '#' represents a digit placeholder
  * Other characters are literals that will appear in the formatted output
+ *
+ * Typed against `CountryCode` so a typo is a compile error, with `DEFAULT` required so the
+ * fallback lookup needs no cast.
  */
-export const MASK_PATTERNS: Record<string, string> = {
+export const MASK_PATTERNS: Partial<Record<CountryCode, string>> & { DEFAULT: string } = {
     // North America
     US: "(###) ###-####", // United States: (123) 456-7890
     CA: "(###) ###-####", // Canada: (123) 456-7890
@@ -53,8 +60,18 @@ export const MASK_PATTERNS: Record<string, string> = {
  * @returns The mask pattern string for the country
  */
 export function getMaskForCountry(countryCode: CountryCode): string {
-    const pattern = MASK_PATTERNS[countryCode];
-    return pattern !== undefined ? pattern : (MASK_PATTERNS.DEFAULT as string);
+    return MASK_PATTERNS[countryCode] ?? MASK_PATTERNS.DEFAULT;
+}
+
+/**
+ * True when this country has a hand-authored mask rather than falling through to `DEFAULT`.
+ *
+ * Only ~26 of ~250 countries do. `DEFAULT` is a guess at the shape of a number, so a length cap
+ * derived from it would block legitimate input rather than merely mis-space it — which is why
+ * the cap applies here and nowhere else.
+ */
+export function hasAuthoredMask(countryCode: CountryCode): boolean {
+    return MASK_PATTERNS[countryCode] !== undefined;
 }
 
 /**
@@ -104,54 +121,36 @@ export function applyMask(value: string, mask: string): string {
 }
 
 /**
- * Calculate the cursor position after applying a mask
- * This ensures the cursor stays in the correct position when formatting is applied
- * @param previousValue - The value before masking
- * @param newValue - The value after masking
- * @param previousCursorPosition - The cursor position before masking
- * @returns The new cursor position
+ * Where the caret belongs in a freshly masked string.
+ *
+ * Anchored on digits, not characters: the caret keeps the same number of digits in front of it
+ * that the user had before the mask was reapplied, so inserting a digit mid-string does not
+ * throw the caret to the end and does not land it inside a literal.
+ *
+ * @param previousValue - The string the user was editing, mask characters included
+ * @param newValue - The re-masked string
+ * @param previousCursorPosition - The caret offset within `previousValue`
+ * @returns The caret offset within `newValue`
  */
 export function getNewCursorPosition(previousValue: string, newValue: string, previousCursorPosition: number): number {
-    // Count digits before cursor in previous value
     const digitsBefore = removeMask(previousValue.slice(0, previousCursorPosition)).length;
 
-    // If no digits before cursor, return 0
     if (digitsBefore === 0) {
         return 0;
     }
 
-    // Find position in new value where we have the same number of digits
     let digitsCount = 0;
-    let newPosition = 0;
-
     for (let i = 0; i < newValue.length; i++) {
         const char = newValue[i];
         if (char && /\d/.test(char)) {
             digitsCount++;
-        }
-        if (digitsCount === digitsBefore) {
-            // Place cursor after this digit
-            newPosition = i + 1;
-            break;
+            if (digitsCount === digitsBefore) {
+                return i + 1;
+            }
         }
     }
 
-    // If we haven't found the position yet, place cursor at the end
-    if (newPosition === 0 && newValue.length > 0) {
-        newPosition = newValue.length;
-    }
-
-    return newPosition;
-}
-
-/**
- * Check if a character at a given position in the mask is a literal (not a digit placeholder)
- * @param mask - The mask pattern
- * @param position - The position to check
- * @returns True if the character is a literal, false if it's a digit placeholder
- */
-export function isLiteralPosition(mask: string, position: number): boolean {
-    return position < mask.length && mask[position] !== "#";
+    return newValue.length;
 }
 
 /**
@@ -161,4 +160,35 @@ export function isLiteralPosition(mask: string, position: number): boolean {
  */
 export function getMaxDigits(mask: string): number {
     return (mask.match(/#/g) || []).length;
+}
+
+/**
+ * Format a national number as E.164.
+ *
+ * Delegates the trunk-prefix rule to libphonenumber rather than stripping a leading zero by
+ * hand, because that rule is regional: `0612345678` in Italy is `+390612345678` — the zero is
+ * part of the number — while the same digits in Vietnam are `+84912345678`. Both are verified
+ * in `maskUtils.test.ts`. A blanket strip produces an invalid Italian number.
+ *
+ * This is formatting, not validation. A string coming out of here is not evidence that the
+ * number exists or can receive calls; use `isValidNumber` for that, and even then not as an
+ * authorization decision.
+ *
+ * @param rawDigits - The number as entered, national format, no mask characters required
+ * @param countryCode - The selected region, used to resolve the trunk prefix
+ * @param callingCode - Used only for the fallback, when the number cannot yet be parsed
+ * @returns An E.164 string, a best-effort `+<callingCode><digits>` join, or `""` when empty
+ */
+export function toE164(rawDigits: string, countryCode: CountryCode, callingCode?: string): string {
+    const digits = removeMask(rawDigits);
+    if (!digits) {
+        return "";
+    }
+    try {
+        return phoneUtil.format(phoneUtil.parse(digits, countryCode), PhoneNumberFormat.E164);
+    } catch {
+        // Partially typed numbers do not parse. Joining is what this component always did, and
+        // it keeps `onChangeFormattedText` useful on every keystroke rather than only the last.
+        return callingCode ? `+${callingCode}${digits}` : digits;
+    }
 }

@@ -8,6 +8,7 @@ import {
     View,
     type StyleProp,
     type TextInputProps,
+    type TextInputSelectionChangeEvent,
     type TextStyle,
     type ViewStyle
 } from "react-native";
@@ -25,7 +26,15 @@ import CountryPicker, {
     type CountryFilterProps,
     type CountryPickerModalProps
 } from "./countryPickerModal";
-import { applyMask, getMaskForCountry, removeMask } from "./maskUtils";
+import {
+    applyMask,
+    getMaskForCountry,
+    getMaxDigits,
+    getNewCursorPosition,
+    hasAuthoredMask,
+    removeMask,
+    toE164
+} from "./maskUtils";
 import styles from "./styles";
 
 const dropDown =
@@ -81,14 +90,6 @@ export type PhoneInputRefType = {
 /** Hoisted so the default is one shared object rather than a new one per render. */
 const EMPTY_FILTER_PROPS: CountryFilterProps = {};
 
-/**
- * Join a calling code onto a number without ever producing a string containing "undefined".
- * An empty number yields an empty string rather than a bare "+84", so a consumer can tell
- * "nothing entered" from "entered, and here is the country".
- */
-const withCallingCode = (rawValue: string, callingCode: string | undefined): string =>
-    rawValue.length > 0 && callingCode ? `+${callingCode}${rawValue}` : rawValue;
-
 const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, ref) => {
     const getCountryCodeByCallingCode = React.useCallback(async (callingCode: string) => {
         const countries = await loadDataAsync();
@@ -104,6 +105,37 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
     );
     const [modalVisible, setModalVisible] = React.useState<boolean>(false);
     const [countryCode, setCountryCode] = React.useState<CountryCode>(props.defaultCode || "IN");
+
+    /**
+     * Caret control, masked mode only, and deliberately one-shot.
+     *
+     * Re-masking replaces the whole string, which sends the caret to the end. `pendingSelection`
+     * puts it back exactly once, for the single commit that follows a text change, and the effect
+     * below hands control straight back to the platform. A permanently controlled `selection` on
+     * Android fights predictive text — this stays out of the way except for the one commit where
+     * the value was rewritten underneath the user.
+     */
+    const [pendingSelection, setPendingSelection] = React.useState<{ start: number; end: number } | undefined>(
+        undefined
+    );
+
+    /**
+     * Released after the commit that carried it, not from `onSelectionChange`.
+     *
+     * iOS fires `onSelectionChange` for a keystroke in the same batch as `onChangeText`, so
+     * clearing from there collapsed set-then-clear into a single render and the correction never
+     * reached the platform: the caret stayed where it was and consecutive digits went in
+     * backwards. Clearing from an effect guarantees one committed render with the caret set.
+     */
+    const pendingSelectionRef = React.useRef<number | undefined>(undefined);
+    React.useEffect(() => {
+        if (pendingSelection) {
+            pendingSelectionRef.current = undefined;
+            setPendingSelection(undefined);
+        }
+    }, [pendingSelection]);
+    const lastSelection = React.useRef(0);
+    const lastDisplayLength = React.useRef(0);
 
     const { withMask = false, disabled = false, layout = "first", flagSize } = props;
 
@@ -173,7 +205,8 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
 
     React.useEffect(() => {
         rawValueRef.current = rawValue;
-    }, [rawValue]);
+        lastDisplayLength.current = displayValue.length;
+    }, [rawValue, displayValue]);
 
     React.useEffect(() => {
         const setupDefaultCallingCode = async () => {
@@ -204,24 +237,61 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
 
         // The masked display is derived from rawValue and countryCode, so changing the
         // country re-masks on the next render. Nothing to re-apply by hand.
-        callbacks.current.onChangeFormattedText?.(withCallingCode(rawValueRef.current, country.callingCode[0]));
+        callbacks.current.onChangeFormattedText?.(toE164(rawValueRef.current, country.cca2, country.callingCode[0]));
         callbacks.current.onChangeCountry?.(country);
     }, []);
 
     const onChangeText = React.useCallback(
         (text: string) => {
             // Under a mask the user types into the formatted string; only the digits are real.
-            const nextValue = withMask ? removeMask(text) : text;
+            let nextValue = withMask ? removeMask(text) : text;
+
+            // Stop at the mask's capacity, but only where a real mask was authored for this
+            // country. `DEFAULT` is a guess, and capping on a guess blocks valid input.
+            if (withMask && hasAuthoredMask(countryCode)) {
+                nextValue = nextValue.slice(0, getMaxDigits(getMaskForCountry(countryCode)));
+            }
+
+            if (withMask) {
+                // `text` is the previous display with the edit already applied, so the caret sits
+                // where it was plus however many characters the edit added or removed.
+                const caretInText = Math.max(0, lastSelection.current + (text.length - lastDisplayLength.current));
+                const nextDisplay = applyMask(nextValue, getMaskForCountry(countryCode));
+                const caret = getNewCursorPosition(text, nextDisplay, caretInText);
+                // Recorded here rather than left to the effect below. A fast typist — or a test
+                // driver — can deliver the next keystroke before React has committed, and reading
+                // a stale caret or display length there scrambles the digit order.
+                lastSelection.current = caret;
+                lastDisplayLength.current = nextDisplay.length;
+                pendingSelectionRef.current = caret;
+                setPendingSelection({ start: caret, end: caret });
+            }
 
             if (!isControlled) {
                 setInternalValue(nextValue);
             }
 
             callbacks.current.onChangeText?.(nextValue);
-            callbacks.current.onChangeFormattedText?.(withCallingCode(nextValue, code));
+            callbacks.current.onChangeFormattedText?.(toE164(nextValue, countryCode, code));
         },
-        [code, withMask, isControlled]
+        [code, countryCode, withMask, isControlled]
     );
+
+    const onSelectionChange = React.useCallback((event: TextInputSelectionChangeEvent) => {
+        const { start } = event.nativeEvent.selection;
+
+        // Between a text change and the commit that carries the corrected caret, the platform
+        // reports where *it* put the caret after replacing the string — usually the end. Taking
+        // that as the user's position undoes the correction on the following keystroke, so while
+        // a correction is outstanding only its own echo is believed.
+        if (pendingSelectionRef.current !== undefined && pendingSelectionRef.current !== start) {
+            return;
+        }
+
+        // Releasing the controlled selection is the effect's job, not this handler's — doing it
+        // here loses the correction on iOS, see `pendingSelection`.
+        lastSelection.current = start;
+    }, []);
 
     const renderDefaultDropdownImage = React.useMemo(() => {
         return <Image source={{ uri: dropDown }} resizeMode="contain" style={styles.dropDownImage} />;
@@ -262,7 +332,9 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
             const currentNumber = rawValue.startsWith("0") ? rawValue.slice(1) : rawValue;
             return {
                 number: currentNumber,
-                formattedNumber: withCallingCode(currentNumber, code)
+                // Built from `rawValue`, not from the hand-stripped `currentNumber`, so this
+                // is the identical string `onChangeFormattedText` emitted for the same input.
+                formattedNumber: toE164(rawValue, countryCode, code)
             };
         }
     }));
@@ -339,6 +411,8 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
                         placeholder={placeholder}
                         onChangeText={onChangeText}
                         value={displayValue}
+                        selection={withMask ? pendingSelection : undefined}
+                        onSelectionChange={withMask ? onSelectionChange : undefined}
                         editable={!disabled}
                         selectionColor="black"
                         keyboardAppearance={withDarkTheme ? "dark" : "default"}

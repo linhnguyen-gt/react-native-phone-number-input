@@ -3,8 +3,9 @@ import {
     getMaskForCountry,
     getMaxDigits,
     getNewCursorPosition,
-    isLiteralPosition,
-    removeMask
+    hasAuthoredMask,
+    removeMask,
+    toE164
 } from "../maskUtils";
 
 describe("maskUtils", () => {
@@ -122,63 +123,6 @@ describe("maskUtils", () => {
         });
     });
 
-    describe("getNewCursorPosition", () => {
-        it("should calculate cursor position after adding digit", () => {
-            const previousValue = "(123) 45";
-            const newValue = "(123) 456";
-            const previousCursor = 8; // After '5'
-            const newCursor = getNewCursorPosition(previousValue, newValue, previousCursor);
-            expect(newCursor).toBe(8); // Still after '5', before '6'
-        });
-
-        it("should handle cursor at beginning", () => {
-            const previousValue = "";
-            const newValue = "(1";
-            const previousCursor = 0;
-            const newCursor = getNewCursorPosition(previousValue, newValue, previousCursor);
-            expect(newCursor).toBe(0);
-        });
-
-        it("should handle cursor after literal character", () => {
-            const previousValue = "(123";
-            const newValue = "(123) ";
-            const previousCursor = 4; // After '3'
-            const newCursor = getNewCursorPosition(previousValue, newValue, previousCursor);
-            expect(newCursor).toBe(4); // Still after '3'
-        });
-
-        it("should handle empty previous value", () => {
-            const previousValue = "";
-            const newValue = "(123) 456-7890";
-            const previousCursor = 0;
-            const newCursor = getNewCursorPosition(previousValue, newValue, previousCursor);
-            expect(newCursor).toBe(0);
-        });
-    });
-
-    describe("isLiteralPosition", () => {
-        it("should identify literal positions in US mask", () => {
-            const mask = "(###) ###-####";
-            expect(isLiteralPosition(mask, 0)).toBe(true); // '('
-            expect(isLiteralPosition(mask, 1)).toBe(false); // '#'
-            expect(isLiteralPosition(mask, 4)).toBe(true); // ')'
-            expect(isLiteralPosition(mask, 5)).toBe(true); // ' '
-            expect(isLiteralPosition(mask, 9)).toBe(true); // '-'
-        });
-
-        it("should identify literal positions in VN mask", () => {
-            const mask = "### ### ####";
-            expect(isLiteralPosition(mask, 0)).toBe(false); // '#'
-            expect(isLiteralPosition(mask, 3)).toBe(true); // ' '
-            expect(isLiteralPosition(mask, 7)).toBe(true); // ' '
-        });
-
-        it("should handle position beyond mask length", () => {
-            const mask = "###";
-            expect(isLiteralPosition(mask, 10)).toBe(false);
-        });
-    });
-
     describe("getMaxDigits", () => {
         it("should count digits in US mask", () => {
             expect(getMaxDigits("(###) ###-####")).toBe(10);
@@ -280,6 +224,73 @@ describe("maskUtils", () => {
 
             expect(applyMask(digits, usMask)).toBe("(123) 456-7890");
             expect(applyMask(digits, vnMask)).toBe("123 456 7890");
+        });
+    });
+
+    describe("hasAuthoredMask", () => {
+        it("is true for a country with a hand-written pattern", () => {
+            expect(hasAuthoredMask("US")).toBe(true);
+            expect(hasAuthoredMask("VN")).toBe(true);
+        });
+
+        it("is false for a country that falls through to DEFAULT", () => {
+            expect(hasAuthoredMask("AF")).toBe(false);
+        });
+    });
+
+    describe("toE164", () => {
+        it("drops the trunk zero where the region drops it", () => {
+            expect(toE164("0912345678", "VN", "84")).toBe("+84912345678");
+        });
+
+        it("keeps the trunk zero where the region keeps it", () => {
+            // Italy's leading zero is part of the number. A blanket strip would produce
+            // +39612345678, which is not a valid Italian number.
+            expect(toE164("0612345678", "IT", "39")).toBe("+390612345678");
+        });
+
+        it("formats a number with no leading zero", () => {
+            expect(toE164("2025550123", "US", "1")).toBe("+12025550123");
+        });
+
+        it("ignores mask characters in the input", () => {
+            expect(toE164("(202) 555-0123", "US", "1")).toBe("+12025550123");
+        });
+
+        it("returns the empty string for no input", () => {
+            expect(toE164("", "VN", "84")).toBe("");
+            expect(toE164("   ", "VN", "84")).toBe("");
+        });
+
+        it("falls back to a plain join when the number cannot be parsed", () => {
+            // Half-typed numbers do not parse, and the callback still has to say something
+            // useful on every keystroke.
+            expect(toE164("9", "VN", "84")).toBe("+849");
+        });
+
+        it("falls back to the digits alone when there is no calling code either", () => {
+            expect(toE164("9", "VN")).toBe("9");
+        });
+    });
+
+    describe("getNewCursorPosition", () => {
+        it("keeps the same digits behind the caret when the string is re-masked", () => {
+            // "(202) 55|5-0123" — five digits behind the caret. After inserting a 9 there the
+            // string becomes "(202) 559-5012", and the caret belongs after its fifth digit.
+            expect(getNewCursorPosition("(202) 555-0123", "(202) 559-5012", 8)).toBe(8);
+        });
+
+        it("skips past a literal rather than landing inside it", () => {
+            // Three digits entered; the caret must land after ")" and the space, not before them.
+            expect(getNewCursorPosition("202", "(202) ", 3)).toBe(4);
+        });
+
+        it("returns 0 when no digits precede the caret", () => {
+            expect(getNewCursorPosition("(202) 555-0123", "(202) 555-0123", 1)).toBe(0);
+        });
+
+        it("clamps to the end when the new value is shorter", () => {
+            expect(getNewCursorPosition("(202) 555-0123", "(20", 12)).toBe(3);
         });
     });
 });
