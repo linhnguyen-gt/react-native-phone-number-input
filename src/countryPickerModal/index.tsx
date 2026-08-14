@@ -43,6 +43,7 @@ export type CountryPickerModalProps = CountryPickerProps & {
     onSelect(country: Country): void;
     onOpen?(): void;
     onClose?(): void;
+    onError?(error: unknown): void;
 };
 
 const Main: React.FC<CountryPickerModalProps> = ({

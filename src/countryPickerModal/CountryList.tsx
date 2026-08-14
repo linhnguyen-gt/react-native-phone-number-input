@@ -55,6 +55,15 @@ const styles = StyleSheet.create({
     sep: {
         borderBottomWidth,
         width: "100%"
+    },
+    errorContainer: {
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 24
+    },
+    errorText: {
+        textAlign: "center"
     }
 });
 
@@ -132,6 +141,9 @@ const renderItem =
 
 interface CountryListProps {
     data: Country[];
+    /** Set when the country list failed to load. An empty list and a failed load look the
+     *  same to a user otherwise — a modal with nothing in it and no explanation. */
+    loadError?: unknown;
     filter?: string;
     filterFocus?: boolean;
     withFlag?: boolean;
@@ -153,6 +165,7 @@ const { height } = Dimensions.get("window");
 const CountryList: React.FC<CountryListProps> = (props) => {
     const {
         data,
+        loadError,
         withAlphaFilter,
         withEmoji,
         withFlag,
@@ -194,6 +207,16 @@ const CountryList: React.FC<CountryListProps> = (props) => {
     }, [filterFocus]);
 
     const initialNumToRender = Math.round(height / (itemHeight || 1));
+
+    if (loadError && data.length === 0) {
+        return (
+            <View testID="country-list-error" style={[styles.container, styles.errorContainer, { backgroundColor }]}>
+                <CountryText style={styles.errorText}>Could not load the country list.</CountryText>
+                <CountryText style={styles.errorText}>Close and reopen to try again.</CountryText>
+            </View>
+        );
+    }
+
     return (
         <View style={[styles.container, { backgroundColor }]}>
             <FlatList

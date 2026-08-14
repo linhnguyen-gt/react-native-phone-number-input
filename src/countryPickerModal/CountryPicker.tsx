@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type ReactNode } from "react";
+import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import type { FlatListProps, ImageSourcePropType, ImageStyle, ModalProps, StyleProp, ViewStyle } from "react-native";
 import type { Edge } from "react-native-safe-area-context";
 import { useContext } from "./CountryContext";
@@ -9,13 +9,6 @@ import { FlagButton } from "./FlagButton";
 import { HeaderModal } from "./HeaderModal";
 import { FlagType, type Country, type CountryCode, type Region, type Subregion } from "./types";
 
-interface State {
-    visible: boolean;
-    countries: Country[];
-    filter?: string;
-    filterFocus?: boolean;
-}
-
 interface RenderFlagButtonProps extends React.ComponentProps<typeof FlagButton> {
     renderFlagButton?(props: React.ComponentProps<typeof FlagButton>): ReactNode;
 }
@@ -23,6 +16,24 @@ interface RenderFlagButtonProps extends React.ComponentProps<typeof FlagButton> 
 interface RenderCountryFilterProps extends React.ComponentProps<typeof CountryFilter> {
     renderCountryFilter?(props: React.ComponentProps<typeof CountryFilter>): ReactNode;
 }
+
+/**
+ * Keeps an array prop's identity stable while its contents are unchanged, so the loader effect
+ * can depend on it honestly. Listing an inline `["US","VN"]` literal directly would refire the
+ * effect on every parent render; omitting it — which is what the old `eslint-disable` did —
+ * meant changing `excludeCountries` after mount had no effect at all.
+ */
+const useStableList = <T,>(list: T[] | undefined): T[] | undefined => {
+    const ref = useRef(list);
+    const previous = ref.current;
+    const unchanged =
+        previous === list ||
+        (!!previous && !!list && previous.length === list.length && previous.every((v, i) => v === list[i]));
+    if (!unchanged) {
+        ref.current = list;
+    }
+    return ref.current;
+};
 
 const renderFlagButton = (props: RenderFlagButtonProps): ReactNode =>
     props.renderFlagButton ? props.renderFlagButton(props) : <FlagButton {...props} />;
@@ -66,6 +77,12 @@ export type CountryPickerProps = {
     onSelect?(country: Country): void;
     onOpen?(): void;
     onClose?(): void;
+    /**
+     * Called when the country list fails to load. Defaults to `console.warn`, which is what
+     * this component did before the callback existed. In FLAT flag mode the list comes from a
+     * third-party host, so a failure here is a network condition a consumer may want to show.
+     */
+    onError?(error: unknown): void;
 };
 
 const CountryPicker: React.FC<CountryPickerProps> = ({
@@ -103,46 +120,51 @@ const CountryPicker: React.FC<CountryPickerProps> = ({
     excludeCountries,
     placeholder = "Select Country",
     preferredCountries,
+    onError,
     ...props
 }) => {
-    const [state, setState] = useState<State>({
-        visible: props.visible || false,
-        countries: [],
-        filter: "",
-        filterFocus: false
-    });
+    // Four independent concerns. They changed for unrelated reasons and were never written
+    // together, so holding them in one object only ever created chances to overwrite one with
+    // a stale copy of the others.
+    const [visible, setVisible] = useState<boolean>(props.visible || false);
+    const [countries, setCountries] = useState<Country[]>([]);
+    const [filter, setFilter] = useState<string>("");
+    const [filterFocus, setFilterFocus] = useState<boolean>(false);
+    const [loadError, setLoadError] = useState<unknown>(undefined);
+    const [attempt, setAttempt] = useState<number>(0);
+
+    // Held in a ref so an inline arrow from the consumer does not restart the loader effect.
+    const onErrorRef = useRef(onError);
+    useEffect(() => {
+        onErrorRef.current = onError;
+    }, [onError]);
+
     const { translation, getCountriesAsync } = useContext();
-    const { visible, filter, countries, filterFocus } = state;
 
     useEffect(() => {
-        setState((previous) =>
-            previous.visible === (props.visible || false) ? previous : { ...previous, visible: props.visible || false }
-        );
+        setVisible(props.visible || false);
     }, [props.visible]);
 
     const onOpen = () => {
-        setState((previous) => ({ ...previous, visible: true }));
+        setVisible(true);
         if (handleOpen) {
             handleOpen();
         }
     };
     const onClose = () => {
-        setState((previous) => ({ ...previous, filter: "", visible: false }));
+        setFilter("");
+        setVisible(false);
         if (handleClose) {
             handleClose();
         }
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-shadow
-    const setFilter = (filter: string) => setState((previous) => ({ ...previous, filter }));
-    // eslint-disable-next-line @typescript-eslint/no-shadow
-    const setCountries = (countries: Country[]) => setState((previous) => ({ ...previous, countries }));
     const onSelectClose = (country: Country) => {
         onSelect?.(country);
         onClose();
     };
-    const onFocus = () => setState((previous) => ({ ...previous, filterFocus: true }));
-    const onBlur = () => setState((previous) => ({ ...previous, filterFocus: false }));
+    const onFocus = () => setFilterFocus(true);
+    const onBlur = () => setFilterFocus(false);
     const flagProp = {
         allowFontScaling,
         countryCode,
@@ -157,6 +179,22 @@ const CountryPicker: React.FC<CountryPickerProps> = ({
         placeholder: placeholder || "Select Country"
     };
 
+    // Opening an empty picker is the user telling us to try again. Without this, a load that
+    // failed at mount can only be retried by unmounting the screen: the loader is an effect
+    // keyed on props that do not change when the modal reopens.
+    const wasVisible = useRef(false);
+    useEffect(() => {
+        const justOpened = visible && !wasVisible.current;
+        wasVisible.current = visible;
+        if (justOpened && countries.length === 0) {
+            setAttempt((previous) => previous + 1);
+        }
+    }, [visible, countries.length]);
+
+    const stableCountryCodes = useStableList(countryCodes);
+    const stableExcludeCountries = useStableList(excludeCountries);
+    const stablePreferredCountries = useStableList(preferredCountries);
+
     useEffect(() => {
         let cancel = false;
         getCountriesAsync(
@@ -164,20 +202,37 @@ const CountryPicker: React.FC<CountryPickerProps> = ({
             translation,
             region,
             subregion,
-            countryCodes,
-            excludeCountries,
-            preferredCountries,
+            stableCountryCodes,
+            stableExcludeCountries,
+            stablePreferredCountries,
             withAlphaFilter
         )
-            // eslint-disable-next-line @typescript-eslint/no-shadow
-            .then((countries) => (cancel ? null : setCountries(countries)))
-            .catch(console.warn);
+            .then((loaded) => {
+                if (cancel) return;
+                setCountries(loaded);
+                setLoadError(undefined);
+            })
+            .catch((error) => {
+                if (cancel) return;
+                setLoadError(error);
+                (onErrorRef.current ?? console.warn)(error);
+            });
 
         return () => {
             cancel = true;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [translation, withEmoji]);
+    }, [
+        getCountriesAsync,
+        translation,
+        withEmoji,
+        region,
+        subregion,
+        stableCountryCodes,
+        stableExcludeCountries,
+        stablePreferredCountries,
+        withAlphaFilter,
+        attempt
+    ]);
 
     return (
         <>
@@ -213,7 +268,7 @@ const CountryPicker: React.FC<CountryPickerProps> = ({
                     {...{
                         onSelect: onSelectClose,
                         data: countries,
-                        letters: [],
+                        loadError,
                         withAlphaFilter: withAlphaFilter && filter === "",
                         withCallingCode,
                         withCurrency,

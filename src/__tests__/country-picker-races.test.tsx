@@ -14,7 +14,6 @@ jest.mock("../countryPickerModal/CountryService", () => ({
     getCountriesAsync: jest.fn()
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { getCountriesAsync } = require("../countryPickerModal/CountryService");
 
 const country = (cca2: string, name: string, callingCode: string): Country =>
