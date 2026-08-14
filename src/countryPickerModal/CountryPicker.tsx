@@ -115,35 +115,34 @@ const CountryPicker: React.FC<CountryPickerProps> = ({
     const { visible, filter, countries, filterFocus } = state;
 
     useEffect(() => {
-        if (state.visible !== props.visible) {
-            setState({ ...state, visible: props.visible || false });
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        setState((previous) =>
+            previous.visible === (props.visible || false) ? previous : { ...previous, visible: props.visible || false }
+        );
     }, [props.visible]);
 
     const onOpen = () => {
-        setState({ ...state, visible: true });
+        setState((previous) => ({ ...previous, visible: true }));
         if (handleOpen) {
             handleOpen();
         }
     };
     const onClose = () => {
-        setState({ ...state, filter: "", visible: false });
+        setState((previous) => ({ ...previous, filter: "", visible: false }));
         if (handleClose) {
             handleClose();
         }
     };
 
     // eslint-disable-next-line @typescript-eslint/no-shadow
-    const setFilter = (filter: string) => setState({ ...state, filter });
+    const setFilter = (filter: string) => setState((previous) => ({ ...previous, filter }));
     // eslint-disable-next-line @typescript-eslint/no-shadow
-    const setCountries = (countries: Country[]) => setState({ ...state, countries });
+    const setCountries = (countries: Country[]) => setState((previous) => ({ ...previous, countries }));
     const onSelectClose = (country: Country) => {
         onSelect?.(country);
         onClose();
     };
-    const onFocus = () => setState({ ...state, filterFocus: true });
-    const onBlur = () => setState({ ...state, filterFocus: false });
+    const onFocus = () => setState((previous) => ({ ...previous, filterFocus: true }));
+    const onBlur = () => setState((previous) => ({ ...previous, filterFocus: false }));
     const flagProp = {
         allowFontScaling,
         countryCode,
