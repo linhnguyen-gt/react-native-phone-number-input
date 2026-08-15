@@ -26,6 +26,7 @@
     "files": [
         "src",
         "lib",
+        "MIGRATION.md",
         "android",
         "ios",
         "cpp",

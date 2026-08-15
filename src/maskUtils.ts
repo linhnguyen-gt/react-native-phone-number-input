@@ -66,7 +66,7 @@ export function getMaskForCountry(countryCode: CountryCode): string {
 /**
  * True when this country has a hand-authored mask rather than falling through to `DEFAULT`.
  *
- * Only ~26 of ~250 countries do. `DEFAULT` is a guess at the shape of a number, so a length cap
+ * Only 25 of ~250 countries do. `DEFAULT` is a guess at the shape of a number, so a length cap
  * derived from it would block legitimate input rather than merely mis-space it — which is why
  * the cap applies here and nowhere else.
  */

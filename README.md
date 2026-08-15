@@ -42,6 +42,10 @@ npm install @linhnguyen96114/react-native-phone-input
 cd ios && pod install
 ```
 
+**Requires** React `>=19.0.0` and React Native `>=0.87.0`, plus `react-native-safe-area-context`.
+Upgrading from 3.x? See the [migration guide](MIGRATION.md) — `value` is now a real controlled
+prop and `onChangeFormattedText` emits proper E.164.
+
 ## 💡 Examples
 
 ### Basic Usage
@@ -54,7 +58,7 @@ import PhoneInput from "@linhnguyen96114/react-native-phone-input";
 const BasicExample = () => {
     const [value, setValue] = useState("");
 
-    return <PhoneInput defaultValue={value} defaultCode="US" onChangeText={setValue} withShadow autoFocus />;
+    return <PhoneInput value={value} defaultCode="US" onChangeText={setValue} withShadow autoFocus />;
 };
 ```
 
@@ -68,7 +72,7 @@ const CustomStyledExample = () => {
 
     return (
         <PhoneInput
-            defaultValue={value}
+            value={value}
             defaultCode="US"
             onChangeText={setValue}
             containerStyle={{
@@ -101,7 +105,7 @@ const DarkThemeExample = () => {
 
     return (
         <PhoneInput
-            defaultValue={value}
+            value={value}
             defaultCode="GB"
             onChangeText={setValue}
             withDarkTheme
@@ -139,7 +143,7 @@ const FormExample = () => {
     return (
         <PhoneInput
             ref={phoneInput}
-            defaultValue={value}
+            value={value}
             defaultCode="FR"
             onChangeText={setValue}
             onChangeFormattedText={(text) => {
@@ -165,7 +169,7 @@ const MaskingExample = () => {
 
     return (
         <PhoneInput
-            defaultValue={value}
+            value={value}
             defaultCode="US"
             onChangeText={setValue}
             onChangeFormattedText={setFormattedValue}
@@ -194,8 +198,8 @@ const MaskingExample = () => {
 | `autoFocus`                | `boolean`                    | Auto focus input                      |
 | `defaultCode`              | `CountryCode`                | Default country code                  |
 | `defaultCallingCode`       | `string`                     | Default calling code                  |
-| `value`                    | `string`                     | Controlled input value                |
-| `defaultValue`             | `string`                     | Default phone number value            |
+| `value`                    | `string`                     | Controlled value; supplying it at mount makes the component controlled for life |
+| `defaultValue`             | `string`                     | Uncontrolled seed, read once at mount |
 | `disabled`                 | `boolean`                    | Disable input                         |
 | `disableArrowIcon`         | `boolean`                    | Hide the dropdown arrow icon          |
 | `placeholder`              | `string`                     | Input placeholder text                |
@@ -204,7 +208,7 @@ const MaskingExample = () => {
 | `onChangeFormattedText`    | `(text: string) => void`     | Callback with formatted phone number  |
 | `onBlur`                   | `() => void`                 | Callback when input loses focus       |
 | `onFocus`                  | `() => void`                 | Callback when input gains focus       |
-| `renderDropdownImage`      | `JSX.Element`                | Custom dropdown icon component        |
+| `renderDropdownImage`      | `React.ReactNode`            | Custom dropdown icon component        |
 | `containerStyle`           | `StyleProp<ViewStyle>`       | Container style                       |
 | `textContainerStyle`       | `StyleProp<ViewStyle>`       | Text input container style            |
 | `textInputProps`           | `TextInputProps`             | Additional TextInput props            |
@@ -214,7 +218,7 @@ const MaskingExample = () => {
 | `countryPickerButtonStyle` | `StyleProp<ViewStyle>`       | Country picker button style           |
 | `layout`                   | `"first" \| "second"`        | Layout style                          |
 | `filterProps`              | `CountryFilterProps`         | Country filter props                  |
-| `countryPickerProps`       | `CountryPickerModalProps`    | Country picker modal props            |
+| `countryPickerProps`       | `Partial<CountryPickerModalProps>` | Country picker modal props; `countryCode` and `onSelect` are set internally |
 | `flagSize`                 | `number`                     | Size of the country flag              |
 | `showCountryCode`          | `boolean`                    | Show the country code                 |
 
@@ -225,7 +229,7 @@ const MaskingExample = () => {
 | `getCountryCode`                        | `CountryCode`                                  | Get the currently selected country code                   |
 | `getCallingCode`                        | `CallingCode \| undefined`                     | Get the calling code for the selected country             |
 | `isValidNumber`                         | `boolean`                                      | Validate if the provided phone number is valid            |
-| `getNumberAfterPossiblyEliminatingZero` | `{ number: string; formattedNumber: string; }` | Get the phone number with leading zero removed if present |
+| `getNumberAfterPossiblyEliminatingZero` | `{ number: string \| undefined; formattedNumber: string \| undefined; }` | `number` has a leading zero stripped; `formattedNumber` is E.164 and keeps the zero where the region requires it |
 
 ## 🤝 Contributing
 
