@@ -23,36 +23,37 @@ const localData: DataCountry = {
     imageCountries: undefined
 };
 
+/**
+ * The emoji data set is bundled, so it resolves synchronously. If this ever becomes a dynamic
+ * import, `getEmojiFlag` below has to go back to being async and `EmojiFlag` has to go back to
+ * rendering a loading state.
+ */
+const loadEmojiCountries = (): CountryMap => {
+    if (!localData.emojiCountries) {
+        localData.emojiCountries = require("./assets/data/countries-emoji.json");
+    }
+    return localData.emojiCountries!;
+};
+
 export const loadDataAsync = (
     (data: DataCountry) =>
-    (dataType: FlagType = FlagType.EMOJI): Promise<CountryMap> => {
-        return new Promise((resolve, reject) => {
-            switch (dataType) {
-                case FlagType.FLAT:
-                    if (!data.imageCountries) {
-                        fetch(imageJsonUrl)
-                            .then((response: Response) => response.json())
-                            .then((remoteData: any) => {
-                                data.imageCountries = remoteData;
-                                resolve(data.imageCountries!);
-                            })
-                            .catch(reject);
-                    } else {
-                        resolve(data.imageCountries);
-                    }
-                    break;
-                default:
-                    if (!data.emojiCountries) {
-                        data.emojiCountries = require("./assets/data/countries-emoji.json");
-                        resolve(data.emojiCountries!);
-                    } else {
-                        resolve(data.emojiCountries);
-                    }
-                    break;
-            }
-        });
+    async (dataType: FlagType = FlagType.EMOJI): Promise<CountryMap> => {
+        if (dataType !== FlagType.FLAT) {
+            return loadEmojiCountries();
+        }
+        if (!data.imageCountries) {
+            const response = await fetch(imageJsonUrl);
+            data.imageCountries = (await response.json()) as CountryMap;
+        }
+        return data.imageCountries;
     }
 )(localData);
+
+/**
+ * Synchronous emoji lookup. Every country row used to run an async hook for this, which cost a
+ * spinner and a second render per row while scrolling — for a value already in memory.
+ */
+export const getEmojiFlag = (countryCode: CountryCode = "FR"): string => loadEmojiCountries()[countryCode].flag;
 
 export const getEmojiFlagAsync = async (countryCode: CountryCode = "FR") => {
     const countries = await loadDataAsync();
@@ -184,31 +185,39 @@ const DEFAULT_FUSE_OPTION = {
     minMatchCharLength: 1,
     keys: ["name", "cca2", "callingCode"]
 };
-let fuse: Fuse<Country>;
+/**
+ * Build a searcher that owns one Fuse index over `data`.
+ *
+ * The caller decides how long that index lives. `CountryList` holds it in a `useMemo` keyed on
+ * `data`, so it is rebuilt when the country list changes and discarded with the component.
+ */
+export const createCountrySearch = (
+    data: Country[] = [],
+    options: IFuseOptions<Country> = DEFAULT_FUSE_OPTION
+): ((filter?: string) => Country[]) => {
+    if (data.length === 0) {
+        return () => [];
+    }
+    const fuse = new Fuse<Country>(data, options);
+    return (filter?: string) => (filter ? fuse.search(filter).map((r) => r.item) : data);
+};
+
+/**
+ * Stateless on purpose. This used to hold a module-level `Fuse` index built from whichever
+ * data set reached it first and never rebuilt, so a second picker searched the first picker's
+ * countries. Callers that need the index to survive across renders use `createCountrySearch`.
+ */
 export const search = (
     filter: string = "",
     data: Country[] = [],
     options: IFuseOptions<Country> = DEFAULT_FUSE_OPTION
-) => {
-    if (data.length === 0) {
-        return [];
-    }
-    if (!fuse) {
-        fuse = new Fuse<Country>(data, options);
-    }
-    if (filter && filter !== "") {
-        const result = fuse.search(filter);
-        return result.map((r) => r.item);
-    } else {
-        return data;
-    }
-};
+) => createCountrySearch(data, options)(filter);
 const uniq = (arr: string[]) => Array.from(new Set(arr));
 
 export const getLetters = (countries: Country[]) => {
     return uniq(
         countries
-            .map((country: Country) => (country.name as string).substr(0, 1).toLocaleUpperCase())
+            .map((country: Country) => (country.name as string).slice(0, 1).toLocaleUpperCase())
             .sort((l1: string, l2: string) => l1.localeCompare(l2))
     );
 };

@@ -23,7 +23,7 @@ const MaskingExample = () => {
                 <View style={styles.inputContainer}>
                     <PhoneInput
                         ref={phoneInput}
-                        defaultValue={value}
+                        value={value}
                         defaultCode="US"
                         onChangeText={setValue}
                         onChangeFormattedText={setFormattedValue}
@@ -50,7 +50,7 @@ const MaskingExample = () => {
                 <View style={styles.inputContainer}>
                     <PhoneInput
                         ref={maskedPhoneInput}
-                        defaultValue={maskedValue}
+                        value={maskedValue}
                         defaultCode="US"
                         onChangeText={setMaskedValue}
                         onChangeFormattedText={setMaskedFormattedValue}

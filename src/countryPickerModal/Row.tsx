@@ -14,6 +14,8 @@ const styles = StyleSheet.create({
     }
 });
 
-export const Row: React.FC<ViewProps & { children?: React.ReactNode; fullWidth?: boolean }> = (props) => (
+type RowProps = ViewProps & { children?: React.ReactNode; fullWidth?: boolean };
+
+export const Row = (props: RowProps) => (
     <View {...props} style={[styles.row, props.style, props.fullWidth && styles.fullWidth]} />
 );

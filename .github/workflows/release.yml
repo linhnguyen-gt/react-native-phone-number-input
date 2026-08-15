@@ -1,19 +1,23 @@
 name: Automated Release
 
+# Releases are cut deliberately, never by merging code. A push trigger computed the
+# version from commit messages, which meant a breaking change could ship as a patch.
 on:
-    push:
-        branches:
-            - master
-        paths-ignore:
-            - "**.md"
-            - ".github/**"
-            - "!.github/workflows/release.yml"
+    workflow_dispatch:
+        inputs:
+            increment:
+                description: "Version increment passed to release-it"
+                required: true
+                default: "patch"
+                type: choice
+                options:
+                    - patch
+                    - minor
+                    - major
 
 jobs:
     release:
         runs-on: ubuntu-latest
-        # Prevent running on release commits to avoid infinite loops
-        if: '!contains(github.event.head_commit.message, ''chore: release'')'
 
         permissions:
             contents: write
@@ -30,87 +34,29 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: "22"
+                  node-version-file: .nvmrc
                   registry-url: "https://registry.npmjs.org"
-
-            - name: Setup Yarn
-              run: |
-                  rm -rf .yarn .yarnrc.yml
-                  corepack enable
-                  corepack prepare yarn@3.6.1 --activate
-                  echo 'nodeLinker: node-modules' > .yarnrc.yml
-                  echo 'enableGlobalCache: true' >> .yarnrc.yml
-                  echo 'enableImmutableInstalls: false' >> .yarnrc.yml
+                  cache: npm
+                  cache-dependency-path: package-lock.json
 
             - name: Install dependencies
-              run: |
-                  yarn install
-                  yarn add -D @babel/core@^7.20.0 @babel/preset-env@^7.20.0
+              run: npm ci
 
             - name: Configure Git
               run: |
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
 
-            - name: Configure NPM Authentication
-              if: '!cancelled() && env.NPM_TOKEN != '''''
-              env:
-                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-              run: |
-                  echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
-                  echo "registry=https://registry.npmjs.org/" >> .npmrc
-
-            - name: Check for releasable commits
-              id: check
-              run: |
-                  # Get the latest tag
-                  LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
-                  if [ -z "$LATEST_TAG" ]; then
-                    echo "No previous tags found, proceeding with release"
-                    echo "should_release=true" >> $GITHUB_OUTPUT
-                  else
-                    echo "Latest tag: $LATEST_TAG"
-
-                    # Check if there are any conventional commits since the last tag
-                    COMMITS=$(git log $LATEST_TAG..HEAD --pretty=format:"%s")
-
-                    if echo "$COMMITS" | grep -qE "^(feat|fix|perf|refactor|revert|docs|style|chore|test|build|ci)(\(.+\))?!?:"; then
-                      echo "Found releasable commits"
-                      echo "should_release=true" >> $GITHUB_OUTPUT
-                    else
-                      echo "No releasable commits found"
-                      echo "should_release=false" >> $GITHUB_OUTPUT
-                    fi
-                  fi
-
             - name: Run release-it
-              if: steps.check.outputs.should_release == 'true'
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
               run: |
-                  # Run release-it in CI mode
-                  # It will:
-                  # 1. Determine version bump from conventional commits
-                  # 2. Update package.json version
-                  # 3. Generate CHANGELOG.md
-                  # 4. Create git commit for release
-                  # 5. Create git tag
-                  # 6. Push tag to GitHub
-                  # 7. Create GitHub release with changelog
-                  # 8. Publish to npm (if NPM_TOKEN is set)
-
-                  if [ -n "$NPM_TOKEN" ]; then
-                    echo "NPM_TOKEN is set, will publish to npm"
-                    yarn release --ci
-                  else
-                    echo "NPM_TOKEN is not set, skipping npm publish"
-                    yarn release --ci --no-npm
-                  fi
+                  # release-it bumps the version, writes the changelog, tags, and creates the
+                  # GitHub release. It does NOT publish to npm — npm.publish is false and
+                  # publish.yml is the single path to the registry, gated on that GitHub release.
+                  npm run release -- ${{ inputs.increment }} --ci
 
             - name: Extract Latest Changelog
-              if: steps.check.outputs.should_release == 'true'
               id: changelog
               run: |
                   # Extract only the latest version section from CHANGELOG.md
@@ -125,7 +71,6 @@ jobs:
                   echo "Extracted changelog for $VERSION"
 
             - name: Update GitHub Release Notes
-              if: steps.check.outputs.should_release == 'true'
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |

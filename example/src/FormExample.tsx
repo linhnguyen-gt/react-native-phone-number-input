@@ -19,7 +19,7 @@ const FormExample = () => {
             // Simulate API call
             await new Promise((resolve) => setTimeout(resolve, 1500));
             Alert.alert("Success", `Phone number submitted: ${formattedPhone}`);
-        } catch (error) {
+        } catch {
             Alert.alert("Error", "Something went wrong");
         } finally {
             setLoading(false);
@@ -33,7 +33,7 @@ const FormExample = () => {
             <View style={styles.form}>
                 <Text style={styles.label}>Phone Number *</Text>
                 <PhoneInput
-                    defaultValue={phone}
+                    value={phone}
                     defaultCode="US"
                     onChangeText={(text) => {
                         setPhone(text);

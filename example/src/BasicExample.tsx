@@ -11,7 +11,7 @@ const BasicExample = () => {
             <Text style={styles.title}>Basic Phone Input</Text>
             <View style={styles.inputContainer}>
                 <PhoneInput
-                    defaultValue={value}
+                    value={value}
                     defaultCode="US"
                     onChangeText={setValue}
                     onChangeFormattedText={setFormattedValue}

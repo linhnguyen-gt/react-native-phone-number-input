@@ -1,9 +1,7 @@
-import PhoneInput from "@linhnguyen96114/react-native-phone-input";
+import PhoneInput, { type PhoneInputRefType } from "@linhnguyen96114/react-native-phone-input";
 import { useRef, useState } from "react";
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { Colors } from "react-native/Libraries/NewAppScreen";
-import type { PhoneInputRefType } from "../..";
 import BasicExample from "./BasicExample";
 import CustomStyledExample from "./CustomStyledExample";
 import FormExample from "./FormExample";
@@ -184,7 +182,9 @@ const App = () => {
     return (
         <SafeAreaProvider>
             <SafeAreaView style={styles.container}>
-                <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+                {/* backgroundColor was removed in React Native 0.87, where Android draws
+                    edge-to-edge and the bar is always transparent. */}
+                <StatusBar barStyle="dark-content" />
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Phone Input Examples</Text>
                     <Text style={styles.headerSubtitle}>React Native Phone Number Input Demo</Text>
@@ -198,7 +198,7 @@ const App = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.lighter
+        backgroundColor: "#F3F4F6"
     },
     header: {
         padding: 20,
