@@ -37,50 +37,198 @@ import {
 } from "./maskUtils";
 import styles from "./styles";
 
+/**
+ * The type surface the hand-written `index.d.ts` used to publish. Declarations are generated
+ * from this file now, so anything a consumer is allowed to name has to be re-exported here —
+ * a silently narrower public surface is a breaking change nobody notices until it breaks them.
+ */
+export type {
+    CallingCode,
+    Country,
+    CountryCode,
+    CountryFilterProps,
+    CountryPickerModalProps,
+    Region,
+    Subregion
+} from "./countryPickerModal";
+
 const dropDown =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAi0lEQVRYR+3WuQ6AIBRE0eHL1T83FBqU5S1szdiY2NyTKcCAzU/Y3AcBXIALcIF0gRPAsehgugDEXnYQrUC88RIgfpuJ+MRrgFmILN4CjEYU4xJgFKIa1wB6Ec24FuBFiHELwIpQxa0ALUId9wAkhCnuBdQQ5ngP4I9wxXsBDyJ9m+8y/g9wAS7ABW4giBshQZji3AAAAABJRU5ErkJggg==";
 const phoneUtil = PhoneNumberUtil.getInstance();
 
 export type PhoneInputProps = {
+    /** Enable dark theme styling. */
     withDarkTheme?: boolean;
+
+    /** Add a shadow to the input container. */
     withShadow?: boolean;
+
+    /**
+     * Format the number as it is typed, using a country-specific pattern
+     * (US: `(123) 456-7890`, VN: `012 345 6789`).
+     *
+     * The field displays the formatted string; `onChangeText` still receives digits only, and
+     * `onChangeFormattedText` receives E.164. Where a pattern was hand-authored for the country,
+     * input stops once it is full.
+     *
+     * @default false
+     * @example
+     * <PhoneInput withMask defaultCode="US" onChangeText={(text) => console.log(text)} />
+     * // typed:                    1234567890
+     * // displayed:                (123) 456-7890
+     * // onChangeText:             "1234567890"
+     * // onChangeFormattedText:    "+11234567890"
+     */
     withMask?: boolean;
+
+    /** Focus the input when the component mounts. */
     autoFocus?: boolean;
+
+    /**
+     * Country to start on, as an ISO 3166-1 alpha-2 code. Overridden by `defaultCallingCode`.
+     *
+     * @example
+     * defaultCode="US"
+     */
     defaultCode?: CountryCode;
+
+    /**
+     * Calling code to start on, without the `+`. Takes precedence over `defaultCode`.
+     *
+     * @example
+     * // Singapore is selected, `defaultCode` is ignored.
+     * <PhoneInput defaultCode="US" defaultCallingCode="65" />
+     */
     defaultCallingCode?: string;
+
+    /**
+     * Controlled value. Supplying it at mount makes the component controlled for its whole life:
+     * the parent owns the value and must update it from `onChangeText`.
+     *
+     * Under `withMask` this is the raw national number — the same string `onChangeText` emits —
+     * and the mask is applied on the way to the screen.
+     */
     value?: string;
+
+    /**
+     * Initial value for an uncontrolled input. Read once, at mount; later changes are ignored.
+     * Pass `value` instead to drive the field from the parent.
+     */
     defaultValue?: string;
+
+    /** Make the input read-only. */
     disabled?: boolean;
+
+    /** Hide the dropdown arrow. */
     disableArrowIcon?: boolean;
+
+    /** Placeholder for the input. */
     placeholder?: string;
+
+    /** Called with the whole country record when the selection changes. */
     onChangeCountry?: (country: Country) => void;
+
+    /** Called with the national number. Digits only when `withMask` is on. */
     onChangeText?: (text: string) => void;
+
+    /**
+     * Called with the number in E.164 (`+11234567890`), masked or not.
+     *
+     * While the number is still half-typed and cannot be parsed, this falls back to
+     * `+<callingCode><digits>` so the callback stays useful on every keystroke. Formatting is
+     * not validation — use `isValidNumber` for that.
+     */
     onChangeFormattedText?: (text: string) => void;
+
+    /** Called when the input loses focus. */
     onBlur?: () => void;
+
+    /** Called when the input gains focus. */
     onFocus?: () => void;
+
+    /** Replaces the built-in dropdown arrow. */
     renderDropdownImage?: React.ReactNode;
+
+    /** Style for the outer container. */
     containerStyle?: StyleProp<ViewStyle>;
+
+    /** Style for the container around the text input. */
     textContainerStyle?: StyleProp<ViewStyle>;
+
+    /** Extra props forwarded to the underlying `TextInput`. */
     textInputProps?: TextInputProps;
+
+    /** Style for the text input. */
     textInputStyle?: StyleProp<TextStyle>;
+
+    /** Style for the calling-code text. */
     codeTextStyle?: StyleProp<TextStyle>;
+
+    /** Style for the flag button. */
     flagButtonStyle?: StyleProp<ViewStyle>;
+
+    /** Style for the country picker button. */
     countryPickerButtonStyle?: StyleProp<ViewStyle>;
+
+    /**
+     * Order of the two halves of the control.
+     *
+     * `"first"` puts the flag button before the input, `"second"` after it.
+     */
     layout?: "first" | "second";
+
+    /** Props for the country picker's search field. */
     filterProps?: CountryFilterProps;
+
     /**
      * Overrides forwarded to the country picker. `Partial` because `PhoneInput` supplies
      * `countryCode` and `onSelect` itself — requiring them here made the prop unusable.
      */
     countryPickerProps?: Partial<CountryPickerModalProps>;
+
+    /** Font size of the flag emoji, or height of the flag image. */
     flagSize?: number;
+
+    /** Show the calling code next to the flag. */
     showCountryCode?: boolean;
 };
 
 export type PhoneInputRefType = {
+    /**
+     * The selected country, as an ISO 3166-1 alpha-2 code.
+     *
+     * @example
+     * phoneInputRef.current?.getCountryCode(); // "US"
+     */
     getCountryCode: () => CountryCode;
+
+    /**
+     * The selected country's calling code, without the `+`.
+     *
+     * @example
+     * phoneInputRef.current?.getCallingCode(); // "1" for US, "84" for VN
+     */
     getCallingCode: () => CallingCode | undefined;
+
+    /**
+     * Whether the number is valid for the selected country, according to libphonenumber.
+     *
+     * This answers "could this number exist", not "does this number belong to this user" — do
+     * not use it as an authorization decision.
+     *
+     * @example
+     * phoneInputRef.current?.isValidNumber("2025550123"); // true
+     */
     isValidNumber: (number: string) => boolean;
+
+    /**
+     * The current number, with a leading zero stripped from `number` and the E.164 form in
+     * `formattedNumber` — the identical string `onChangeFormattedText` emits for the same input.
+     *
+     * @example
+     * phoneInputRef.current?.getNumberAfterPossiblyEliminatingZero();
+     * // { number: "2025550123", formattedNumber: "+12025550123" }
+     */
     getNumberAfterPossiblyEliminatingZero: () => {
         number: string | undefined;
         formattedNumber: string | undefined;
