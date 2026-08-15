@@ -26,28 +26,27 @@ interface Props {
 }
 
 const AnimatedModal = ({ children, visible = false }: Props) => {
-    const translateY = new Animated.Value(height);
-
-    const showModal = Animated.timing(translateY, {
-        toValue: 0,
-        duration,
-        useNativeDriver
-    }).start;
-
-    const hideModal = Animated.timing(translateY, {
-        toValue: height,
-        duration,
-        useNativeDriver
-    }).start;
+    // The value has to survive re-renders. It was previously constructed inline, so every render
+    // produced a fresh one sitting at `height` — off-screen — while the animation that had been
+    // started kept running against the discarded value. Any re-render during or after the open
+    // animation therefore snapped the modal back out of view, and with `useNativeDriver` the
+    // native node was re-attached each time, so the next open animated a value the view no longer
+    // used. The picker opened once at most, and once the list gained a loading state it stopped
+    // opening at all.
+    const translateY = React.useRef(new Animated.Value(height)).current;
 
     React.useEffect(() => {
-        if (visible) {
-            showModal();
-        } else {
-            hideModal();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [visible]);
+        const animation = Animated.timing(translateY, {
+            toValue: visible ? 0 : height,
+            duration,
+            useNativeDriver
+        });
+        animation.start();
+
+        // Reversing mid-flight leaves the previous animation running against the same value,
+        // which fights the new one for the last frame.
+        return () => animation.stop();
+    }, [translateY, visible]);
 
     return <Animated.View style={[styles.absolute, { transform: [{ translateY }] }]}>{children}</Animated.View>;
 };
