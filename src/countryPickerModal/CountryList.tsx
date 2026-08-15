@@ -16,6 +16,7 @@ import { CountryText } from "./CountryText";
 import { useTheme } from "./CountryTheme";
 import { Flag } from "./Flag";
 import type { Country } from "./types";
+import { useItemHeight } from "./useItemHeight";
 
 const borderBottomWidth = 2 / PixelRatio.get();
 
@@ -105,6 +106,7 @@ const CountryItem = ({
     withCurrency
 }: CountryItemProps) => {
     const { activeOpacity, itemHeight, flagSize } = useTheme();
+    const rowHeight = useItemHeight(itemHeight);
 
     const extraContent: string[] = [];
     if (withCallingCode && country.callingCode && country.callingCode.length > 0) {
@@ -121,7 +123,7 @@ const CountryItem = ({
             testID={`country-selector-${country.cca2}`}
             onPress={() => onSelect(country)}
             {...{ activeOpacity }}>
-            <View style={[styles.itemCountry, { height: itemHeight }]}>
+            <View style={[styles.itemCountry, { height: rowHeight }]}>
                 {withFlag && <Flag {...{ withEmoji, countryCode: country.cca2, flagSize: flagSize! }} />}
                 <View style={styles.itemCountryName}>
                     <CountryText numberOfLines={2} ellipsizeMode="tail">
@@ -176,6 +178,7 @@ const CountryList = (props: CountryListProps) => {
     const [letter, setLetter] = useState<string>("");
     const { itemHeight, backgroundColor } = useTheme();
     const { height } = useWindowDimensions();
+    const rowHeight = useItemHeight(itemHeight);
     const indexLetter = useMemo(
         () => data.map((country: Country) => (country.name as string).slice(0, 1)).join(""),
         [data]
@@ -222,7 +225,7 @@ const CountryList = (props: CountryListProps) => {
 
     // Read per render, not once at module scope: the module-scope value was captured before
     // any rotation and never updated.
-    const initialNumToRender = Math.round(height / (itemHeight || 1));
+    const initialNumToRender = Math.round(height / rowHeight);
 
     if (loadError && data.length === 0) {
         return (
@@ -242,8 +245,8 @@ const CountryList = (props: CountryListProps) => {
                 automaticallyAdjustContentInsets={false}
                 scrollEventThrottle={1}
                 getItemLayout={(_data: any, index) => ({
-                    length: itemHeight! + borderBottomWidth,
-                    offset: (itemHeight! + borderBottomWidth) * index,
+                    length: rowHeight + borderBottomWidth,
+                    offset: (rowHeight + borderBottomWidth) * index,
                     index
                 })}
                 renderItem={renderCountryItem}
