@@ -238,7 +238,12 @@ export type PhoneInputRefType = {
 /** Hoisted so the default is one shared object rather than a new one per render. */
 const EMPTY_FILTER_PROPS: CountryFilterProps = {};
 
-const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, ref) => {
+/**
+ * `ref` is a plain prop, which React 19 supports directly — hence the `react: ">=19"` peer.
+ * The type is spelled out rather than taken from `PhoneInputProps` so consumers still see it
+ * on the component, exactly as `forwardRef` used to advertise it.
+ */
+const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<PhoneInputRefType> }) => {
     const getCountryCodeByCallingCode = React.useCallback(async (callingCode: string) => {
         const countries = await loadDataAsync();
         if (!countries) return "US";
@@ -574,6 +579,6 @@ const PhoneInput = React.forwardRef<PhoneInputRefType, PhoneInputProps>((props, 
             </View>
         </CountryModalProvider>
     );
-});
+};
 
 export default PhoneInput;

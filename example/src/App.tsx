@@ -1,8 +1,7 @@
-import PhoneInput from "@linhnguyen96114/react-native-phone-input";
+import PhoneInput, { type PhoneInputRefType } from "@linhnguyen96114/react-native-phone-input";
 import { useRef, useState } from "react";
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import type { PhoneInputRefType } from "../..";
 import BasicExample from "./BasicExample";
 import CustomStyledExample from "./CustomStyledExample";
 import FormExample from "./FormExample";
