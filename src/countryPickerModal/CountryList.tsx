@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     FlatList,
     PixelRatio,
@@ -72,7 +72,7 @@ interface LetterProps {
     letter: string;
     scrollTo(letter: string): void;
 }
-const Letter: React.FC<LetterProps> = ({ letter, scrollTo }) => {
+const Letter = ({ letter, scrollTo }: LetterProps) => {
     const { fontSize, activeOpacity } = useTheme();
 
     return (
@@ -96,14 +96,14 @@ interface CountryItemProps {
     withCurrency?: boolean;
     onSelect(country: Country): void;
 }
-const CountryItem: React.FC<CountryItemProps> = ({
+const CountryItem = ({
     country,
     onSelect,
     withFlag = true,
     withEmoji,
     withCallingCode = false,
     withCurrency
-}) => {
+}: CountryItemProps) => {
     const { activeOpacity, itemHeight, flagSize } = useTheme();
 
     const extraContent: string[] = [];
@@ -134,7 +134,7 @@ const CountryItem: React.FC<CountryItemProps> = ({
     );
 };
 
-const MemoCountryItem: React.FC<CountryItemProps> = memo(CountryItem);
+const MemoCountryItem = memo(CountryItem);
 
 interface CountryListProps {
     data: Country[];
@@ -157,7 +157,7 @@ const ItemSeparatorComponent = () => {
     return <View style={[styles.sep, { borderBottomColor: primaryColorVariant }]} />;
 };
 
-const CountryList: React.FC<CountryListProps> = (props) => {
+const CountryList = (props: CountryListProps) => {
     const {
         data,
         loadError,
@@ -177,7 +177,7 @@ const CountryList: React.FC<CountryListProps> = (props) => {
     const { itemHeight, backgroundColor } = useTheme();
     const { height } = useWindowDimensions();
     const indexLetter = useMemo(
-        () => data.map((country: Country) => (country.name as string).substr(0, 1)).join(""),
+        () => data.map((country: Country) => (country.name as string).slice(0, 1)).join(""),
         [data]
     );
 

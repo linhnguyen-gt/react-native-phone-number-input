@@ -46,13 +46,7 @@ export type CountryPickerModalProps = CountryPickerProps & {
     onError?(error: unknown): void;
 };
 
-const Main: React.FC<CountryPickerModalProps> = ({
-    onSelect = () => {},
-    withEmoji = true,
-    theme,
-    translation,
-    ...props
-}) => {
+const Main = ({ onSelect = () => {}, withEmoji = true, theme, translation, ...props }: CountryPickerModalProps) => {
     // Both of these used to be fresh object literals on every render. A changed context value
     // re-renders every consumer regardless of `React.memo`, which is what every memoized leaf
     // below here depends on — so this is the prerequisite for the rest, not a micro-optimisation.

@@ -37,27 +37,15 @@ const loadEmojiCountries = (): CountryMap => {
 
 export const loadDataAsync = (
     (data: DataCountry) =>
-    (dataType: FlagType = FlagType.EMOJI): Promise<CountryMap> => {
-        return new Promise((resolve, reject) => {
-            switch (dataType) {
-                case FlagType.FLAT:
-                    if (!data.imageCountries) {
-                        fetch(imageJsonUrl)
-                            .then((response: Response) => response.json())
-                            .then((remoteData: any) => {
-                                data.imageCountries = remoteData;
-                                resolve(data.imageCountries!);
-                            })
-                            .catch(reject);
-                    } else {
-                        resolve(data.imageCountries);
-                    }
-                    break;
-                default:
-                    resolve(loadEmojiCountries());
-                    break;
-            }
-        });
+    async (dataType: FlagType = FlagType.EMOJI): Promise<CountryMap> => {
+        if (dataType !== FlagType.FLAT) {
+            return loadEmojiCountries();
+        }
+        if (!data.imageCountries) {
+            const response = await fetch(imageJsonUrl);
+            data.imageCountries = (await response.json()) as CountryMap;
+        }
+        return data.imageCountries;
     }
 )(localData);
 
@@ -229,7 +217,7 @@ const uniq = (arr: string[]) => Array.from(new Set(arr));
 export const getLetters = (countries: Country[]) => {
     return uniq(
         countries
-            .map((country: Country) => (country.name as string).substr(0, 1).toLocaleUpperCase())
+            .map((country: Country) => (country.name as string).slice(0, 1).toLocaleUpperCase())
             .sort((l1: string, l2: string) => l1.localeCompare(l2))
     );
 };

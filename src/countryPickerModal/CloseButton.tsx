@@ -1,4 +1,3 @@
-import React from "react";
 import {
     Image,
     Platform,
@@ -41,7 +40,7 @@ interface CloseButtonProps {
     onPress?(): void;
 }
 
-const CloseButtonAndroid: React.FC<CloseButtonProps> = (props) => {
+const CloseButtonAndroid = (props: CloseButtonProps) => {
     const { onBackgroundTextColor } = useTheme();
     return (
         <View style={[styles.container, props.style]}>
@@ -69,7 +68,7 @@ const CloseButtonAndroid: React.FC<CloseButtonProps> = (props) => {
     );
 };
 
-const CloseButtonIOS: React.FC<CloseButtonProps> = (props) => {
+const CloseButtonIOS = (props: CloseButtonProps) => {
     const { onBackgroundTextColor } = useTheme();
     return (
         <View style={[styles.container, props.style]}>

@@ -26,7 +26,7 @@ interface Props {
     children: React.ReactNode;
 }
 
-const AnimatedModal: React.FC<Props> = ({ children, visible = false }) => {
+const AnimatedModal = ({ children, visible = false }: Props) => {
     const translateY = new Animated.Value(height);
 
     const showModal = Animated.timing(translateY, {

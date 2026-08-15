@@ -85,7 +85,7 @@ export type CountryPickerProps = {
     onError?(error: unknown): void;
 };
 
-const CountryPicker: React.FC<CountryPickerProps> = ({
+const CountryPicker = ({
     allowFontScaling = true,
     countryCode,
     region,
@@ -122,7 +122,7 @@ const CountryPicker: React.FC<CountryPickerProps> = ({
     preferredCountries,
     onError,
     ...props
-}) => {
+}: CountryPickerProps) => {
     // Four independent concerns. They changed for unrelated reasons and were never written
     // together, so holding them in one object only ever created chances to overwrite one with
     // a stale copy of the others.

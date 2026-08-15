@@ -28,14 +28,14 @@ const styles = StyleSheet.create({
     }
 });
 
-interface FlagType {
+interface FlagProps {
     countryCode: CountryCode;
     withEmoji?: boolean;
     withFlagButton?: boolean;
     flagSize: number;
 }
 
-const ImageFlag: React.FC<FlagType> = memo(({ countryCode, flagSize }) => {
+const ImageFlag = memo(({ countryCode, flagSize }: FlagProps) => {
     const { getImageFlagAsync } = useContext();
     const asyncResult = useAsync(getImageFlagAsync, [countryCode]);
     if (asyncResult.loading) {
@@ -54,7 +54,7 @@ const ImageFlag: React.FC<FlagType> = memo(({ countryCode, flagSize }) => {
     );
 });
 
-const EmojiFlag: React.FC<FlagType> = memo(({ countryCode, flagSize }) => {
+const EmojiFlag = memo(({ countryCode, flagSize }: FlagProps) => {
     // Synchronous: the emoji data set is bundled. This used to be a `useAsync` per row, which
     // paid for a spinner and a second render 250 times over while scrolling.
     const { getEmojiFlag } = useContext();
@@ -66,7 +66,7 @@ const EmojiFlag: React.FC<FlagType> = memo(({ countryCode, flagSize }) => {
     );
 });
 
-export const Flag: React.FC<FlagType> = ({ countryCode, withEmoji = true, withFlagButton = true, flagSize }) =>
+export const Flag = ({ countryCode, withEmoji = true, withFlagButton = true, flagSize }: FlagProps) =>
     withFlagButton ? (
         <View style={styles.container}>
             {withEmoji ? <EmojiFlag {...{ countryCode, flagSize }} /> : <ImageFlag {...{ countryCode, flagSize }} />}
