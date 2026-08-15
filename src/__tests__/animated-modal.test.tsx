@@ -11,6 +11,25 @@ import AnimatedModal from "../countryPickerModal/AnimatedModal";
 
 const OFF_SCREEN = Dimensions.get("window").height;
 
+const SCALE = Dimensions.get("window").scale;
+const PORTRAIT = { width: Dimensions.get("window").width, height: OFF_SCREEN };
+/** Same device turned on its side: the closed position has to shrink with it. */
+const LANDSCAPE = { width: OFF_SCREEN, height: PORTRAIT.width };
+
+const setWindow = (width: number, height: number) => {
+    const pixels = { width: width * SCALE, height: height * SCALE, scale: SCALE, fontScale: SCALE };
+    (Dimensions as unknown as { set: (dims: unknown) => void }).set({
+        windowPhysicalPixels: pixels,
+        screenPhysicalPixels: pixels
+    });
+};
+
+const rotateTo = async (width: number, height: number) => {
+    await act(async () => {
+        setWindow(width, height);
+    });
+};
+
 /**
  * The component animates on the native driver, and the native animated module is mocked away
  * under jest — the JS-side value never moves, so every assertion would read the initial number
@@ -49,7 +68,8 @@ describe("AnimatedModal", () => {
         useJsDriver();
     });
 
-    afterEach(() => {
+    afterEach(async () => {
+        await rotateTo(PORTRAIT.width, PORTRAIT.height);
         jest.restoreAllMocks();
         jest.useRealTimers();
     });
@@ -87,6 +107,43 @@ describe("AnimatedModal", () => {
                 <Text testID="child">countries, now loaded</Text>
             </AnimatedModal>
         );
+
+        expect(translateYOf(view)).toBe(0);
+    });
+
+    it("moves the closed position to the new screen height on rotation", async () => {
+        // The height was read once at import time, so after a rotation the closed modal sat one
+        // *old* screen down. Launching in landscape and turning to portrait left it parked in the
+        // middle of the screen, covering the page it was supposed to be hidden behind.
+        const view = await renderModal(false);
+        expect(translateYOf(view)).toBe(PORTRAIT.height);
+
+        await rotateTo(LANDSCAPE.width, LANDSCAPE.height);
+
+        expect(translateYOf(view)).toBe(LANDSCAPE.height);
+    });
+
+    it("does not animate the closed modal across the screen while rotating", async () => {
+        // Sliding from the old height to the new one would drag it through the visible area.
+        // Closed means gone, so the position changes in one step.
+        const view = await renderModal(false);
+
+        await rotateTo(LANDSCAPE.width, LANDSCAPE.height);
+
+        // Read before any timer runs: already in place, with nothing left to animate.
+        expect(translateYOf(view)).toBe(LANDSCAPE.height);
+    });
+
+    it("still slides in when opened after a rotation", async () => {
+        const view = await renderModal(false);
+        await rotateTo(LANDSCAPE.width, LANDSCAPE.height);
+
+        await view.rerender(
+            <AnimatedModal visible>
+                <Text testID="child">countries</Text>
+            </AnimatedModal>
+        );
+        await settle();
 
         expect(translateYOf(view)).toBe(0);
     });

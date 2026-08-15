@@ -1,14 +1,12 @@
+// Hand-written to type `styles.js`. Keep the two in step — nothing checks that they agree, so a
+// key that lingers here after being dropped from the stylesheet type-checks and then reads
+// `undefined` at runtime.
 declare const styles: {
-    flagButtonExtraWidth: {
-        width: number;
-    };
     container: {
-        width: number;
         backgroundColor: string;
         flexDirection: "row";
     };
     flagButtonView: {
-        width: number;
         height: number;
         minWidth: number;
         justifyContent: "center";
@@ -31,9 +29,6 @@ declare const styles: {
     };
     textContainer: {
         flex: number;
-        backgroundColor: string;
-        paddingHorizontal: number;
-        paddingVertical: number;
         textAlign: "left";
         flexDirection: "row";
         alignItems: "center";
