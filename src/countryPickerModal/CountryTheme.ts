@@ -1,6 +1,5 @@
 import { createTheming } from "@callstack/react-theme-provider";
 import { Platform } from "react-native";
-import { getHeightPercent } from "./ratio";
 
 export const DEFAULT_THEME = {
     primaryColor: "#ccc",
@@ -15,7 +14,9 @@ export const DEFAULT_THEME = {
     }),
     filterPlaceholderTextColor: "#aaa",
     activeOpacity: 0.5,
-    itemHeight: getHeightPercent(7),
+    // Left unset so `useItemHeight` can size a row against the window being rendered to. The key
+    // stays declared, and typed, because `Theme` is derived from this object and callers set it.
+    itemHeight: undefined as number | undefined,
     flagSize: Platform.select({ android: 20, default: 30 }),
     flagSizeButton: Platform.select({ android: 20, default: 30 })
 };
