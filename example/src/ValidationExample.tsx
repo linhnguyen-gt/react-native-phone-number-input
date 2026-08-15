@@ -25,7 +25,7 @@ const ValidationExample = () => {
             <View style={styles.inputContainer}>
                 <PhoneInput
                     ref={phoneInput}
-                    defaultValue={value}
+                    value={value}
                     defaultCode="FR"
                     onChangeText={setValue}
                     onChangeFormattedText={setFormattedValue}

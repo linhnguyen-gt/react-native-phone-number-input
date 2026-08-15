@@ -33,7 +33,7 @@ const FormExample = () => {
             <View style={styles.form}>
                 <Text style={styles.label}>Phone Number *</Text>
                 <PhoneInput
-                    defaultValue={phone}
+                    value={phone}
                     defaultCode="US"
                     onChangeText={(text) => {
                         setPhone(text);

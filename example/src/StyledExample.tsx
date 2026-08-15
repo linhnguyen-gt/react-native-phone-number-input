@@ -10,7 +10,7 @@ const StyledExample = () => {
             <Text style={styles.title}>Dark Theme</Text>
             <View style={styles.inputContainer}>
                 <PhoneInput
-                    defaultValue={value}
+                    value={value}
                     defaultCode="GB"
                     onChangeText={setValue}
                     withDarkTheme

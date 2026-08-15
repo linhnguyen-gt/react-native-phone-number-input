@@ -11,7 +11,7 @@ const CustomStyledExample = () => {
             <Text style={styles.title}>Custom Styled Input</Text>
             <View style={styles.inputContainer}>
                 <PhoneInput
-                    defaultValue={value}
+                    value={value}
                     defaultCode="US"
                     onChangeText={setValue}
                     onChangeFormattedText={setFormattedValue}
