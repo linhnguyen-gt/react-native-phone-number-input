@@ -28,6 +28,7 @@ import CountryPicker, {
 } from "./countryPickerModal";
 import { applyMask, capToMask, getCaretAfterEdit, getMaskForCountry, toE164 } from "./maskUtils";
 import styles from "./styles";
+import { useResponsiveWidths } from "./useResponsiveWidths";
 
 /**
  * The type surface the hand-written `index.d.ts` used to publish. Declarations are generated
@@ -559,14 +560,16 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
         [props.countryPickerProps, withDarkTheme]
     );
 
+    const widths = useResponsiveWidths();
+
     return (
         <CountryModalProvider>
-            <View style={[styles.container, withShadow && styles.shadow, containerStyle]}>
+            <View style={[styles.container, widths.container, withShadow && styles.shadow, containerStyle]}>
                 <TouchableOpacity
                     testID="phone-input-country-button"
                     style={[
                         styles.flagButtonView,
-                        layout === "second" && styles.flagButtonExtraWidth,
+                        layout === "second" ? widths.flagButtonExtra : widths.flagButton,
                         flagButtonStyle,
                         countryPickerButtonStyle
                     ]}

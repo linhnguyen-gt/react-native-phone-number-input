@@ -1,28 +1,21 @@
-import { Dimensions, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 
-const { width: viewportWidth } = Dimensions.get("window");
-
-function wp(percentage) {
-    const value = (percentage * viewportWidth) / 100;
-    return Math.round(value);
-}
-
+// The widths these styles used to carry were a percentage of the window resolved once, at import
+// time, and frozen into the stylesheet. On any screen that is not the one the module happened to
+// load on — after a rotation, on a foldable, in a resizable window — the input kept a width
+// derived from the old screen: 80% of a portrait phone is barely a third of the same device in
+// landscape. They are computed per render in `useResponsiveWidths` instead.
 const styles = StyleSheet.create({
     container: {
-        width: wp(80),
         backgroundColor: "white",
         flexDirection: "row"
     },
     flagButtonView: {
-        width: wp(20),
         height: 50,
         minWidth: 32,
         justifyContent: "center",
         flexDirection: "row",
         alignItems: "center"
-    },
-    flagButtonExtraWidth: {
-        width: wp(23)
     },
     shadow: {
         shadowColor: "rgba(0,0,0,0.4)",
