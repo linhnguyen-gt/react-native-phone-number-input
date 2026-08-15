@@ -26,15 +26,7 @@ import CountryPicker, {
     type CountryFilterProps,
     type CountryPickerModalProps
 } from "./countryPickerModal";
-import {
-    applyMask,
-    getMaskForCountry,
-    getMaxDigits,
-    getNewCursorPosition,
-    hasAuthoredMask,
-    removeMask,
-    toE164
-} from "./maskUtils";
+import { applyMask, capToMask, getCaretAfterEdit, getMaskForCountry, toE164 } from "./maskUtils";
 import styles from "./styles";
 
 /**
@@ -287,7 +279,15 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
             setPendingSelection(undefined);
         }
     }, [pendingSelection]);
-    const lastSelection = React.useRef(0);
+    /**
+     * The whole selection, not just its start.
+     *
+     * An edit replaces the selected range, so the number of characters the user actually added is
+     * the net length change *plus* whatever was selected. Tracking only the start made every range
+     * edit land the caret in the wrong place, and select-all-then-retype put it before the opening
+     * literal, which reversed the digits that followed.
+     */
+    const lastSelection = React.useRef({ start: 0, end: 0 });
     const lastDisplayLength = React.useRef(0);
 
     const { withMask = false, disabled = false, layout = "first", flagSize } = props;
@@ -333,7 +333,10 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
     );
 
     React.useEffect(() => {
-        if (__DEV__ && isControlled !== (props.value !== undefined)) {
+        // `__DEV__` is injected by Metro and by nothing else. The published `lib/module` build is
+        // what react-native-web bundlers and any SSR render load, and referencing a global they
+        // never define throws on first render — so the guard has to be a `typeof` check.
+        if (typeof __DEV__ !== "undefined" && __DEV__ && isControlled !== (props.value !== undefined)) {
             console.warn(
                 "PhoneInput: switching between controlled and uncontrolled is not supported. " +
                     `The component mounted ${isControlled ? "controlled" : "uncontrolled"} and stays that way. ` +
@@ -349,17 +352,29 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
      * the mask is applied on the way to the screen. Without masking the value passes through
      * verbatim, as it always has.
      */
-    const rawValue = isControlled ? (withMask ? removeMask(props.value ?? "") : (props.value ?? "")) : internalValue;
+    const rawSource = isControlled ? (props.value ?? "") : internalValue;
+
+    /**
+     * Capped here rather than only in `onChangeText`, which is the one path that used to enforce
+     * it. A seeded `defaultValue`, a controlled `value`, and switching to a country with a shorter
+     * mask all deposit digits without passing through a keystroke, and the field used to display
+     * the overflow — and hand it back from the ref — until the next keystroke silently dropped it.
+     */
+    const rawValue = withMask ? capToMask(rawSource, countryCode) : rawSource;
 
     const displayValue = React.useMemo(
         () => (withMask ? applyMask(rawValue, getMaskForCountry(countryCode)) : rawValue),
         [withMask, rawValue, countryCode]
     );
 
+    // Deliberately runs on every commit rather than on a dependency change. `onChangeText` writes
+    // its *predicted* display length so a keystroke arriving before the commit reads something
+    // current; a controlled parent that normalises or rejects the value never renders that
+    // prediction, and only an unconditional sync puts the refs back on what is actually on screen.
     React.useEffect(() => {
         rawValueRef.current = rawValue;
         lastDisplayLength.current = displayValue.length;
-    }, [rawValue, displayValue]);
+    });
 
     React.useEffect(() => {
         const setupDefaultCallingCode = async () => {
@@ -371,50 +386,69 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
             }
         };
 
-        setupDefaultCallingCode();
+        // A country list that fails to load leaves the calling code at its default. That is a
+        // degraded label, not a crash, and letting the rejection escape only adds a redbox.
+        setupDefaultCallingCode().catch(() => {});
     }, [props.defaultCallingCode, getCountryCodeByCallingCode]);
 
     React.useEffect(() => {
         const loadDefaultCode = async () => {
-            if (props.defaultCode) {
+            // `defaultCallingCode` is documented to win, and it cannot win by racing: its lookup
+            // resolves a microtask sooner than this one, so whichever `setCode` runs last decides.
+            // Standing down here is what actually implements the documented precedence.
+            if (props.defaultCode && !props.defaultCallingCode) {
                 const callingCode = await getCallingCode(props.defaultCode);
                 setCode(callingCode);
             }
         };
-        loadDefaultCode();
-    }, [props.defaultCode]);
+        loadDefaultCode().catch(() => {});
+    }, [props.defaultCode, props.defaultCallingCode]);
 
-    const onSelect = React.useCallback((country: Country) => {
-        setCountryCode(country.cca2);
-        setCode(country.callingCode[0]);
+    const onSelect = React.useCallback(
+        (country: Country) => {
+            setCountryCode(country.cca2);
+            setCode(country.callingCode[0]);
 
-        // The masked display is derived from rawValue and countryCode, so changing the
-        // country re-masks on the next render. Nothing to re-apply by hand.
-        callbacks.current.onChangeFormattedText?.(toE164(rawValueRef.current, country.cca2, country.callingCode[0]));
-        callbacks.current.onChangeCountry?.(country);
-    }, []);
-
-    const onChangeText = React.useCallback(
-        (text: string) => {
-            // Under a mask the user types into the formatted string; only the digits are real.
-            let nextValue = withMask ? removeMask(text) : text;
-
-            // Stop at the mask's capacity, but only where a real mask was authored for this
-            // country. `DEFAULT` is a guess, and capping on a guess blocks valid input.
-            if (withMask && hasAuthoredMask(countryCode)) {
-                nextValue = nextValue.slice(0, getMaxDigits(getMaskForCountry(countryCode)));
+            // The masked display is derived from rawValue and countryCode, so changing the
+            // country re-masks on the next render. Nothing to re-apply by hand — except the cap,
+            // because the new country's mask may be shorter than what is already entered. The
+            // parent is told about that truncation rather than discovering it later.
+            const next = withMask ? capToMask(rawValueRef.current, country.cca2) : rawValueRef.current;
+            if (next !== rawValueRef.current) {
+                rawValueRef.current = next;
+                if (!isControlled) {
+                    setInternalValue(next);
+                }
+                callbacks.current.onChangeText?.(next);
             }
 
             if (withMask) {
-                // `text` is the previous display with the edit already applied, so the caret sits
-                // where it was plus however many characters the edit added or removed.
-                const caretInText = Math.max(0, lastSelection.current + (text.length - lastDisplayLength.current));
+                // The new mask rewrites the whole string, so a caret offset measured against the
+                // old one is meaningless. Anchor both refs to the end of what will be rendered.
+                const nextDisplay = applyMask(next, getMaskForCountry(country.cca2));
+                lastSelection.current = { start: nextDisplay.length, end: nextDisplay.length };
+                lastDisplayLength.current = nextDisplay.length;
+            }
+
+            callbacks.current.onChangeFormattedText?.(toE164(next, country.cca2, country.callingCode[0]));
+            callbacks.current.onChangeCountry?.(country);
+        },
+        [withMask, isControlled]
+    );
+
+    const onChangeText = React.useCallback(
+        (text: string) => {
+            // Under a mask the user types into the formatted string; only the digits are real, and
+            // only as many of them as the country's mask can hold.
+            const nextValue = withMask ? capToMask(text, countryCode) : text;
+
+            if (withMask) {
                 const nextDisplay = applyMask(nextValue, getMaskForCountry(countryCode));
-                const caret = getNewCursorPosition(text, nextDisplay, caretInText);
+                const caret = getCaretAfterEdit(lastDisplayLength.current, lastSelection.current, text, nextDisplay);
                 // Recorded here rather than left to the effect below. A fast typist — or a test
                 // driver — can deliver the next keystroke before React has committed, and reading
                 // a stale caret or display length there scrambles the digit order.
-                lastSelection.current = caret;
+                lastSelection.current = { start: caret, end: caret };
                 lastDisplayLength.current = nextDisplay.length;
                 pendingSelectionRef.current = caret;
                 setPendingSelection({ start: caret, end: caret });
@@ -431,7 +465,7 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
     );
 
     const onSelectionChange = React.useCallback((event: TextInputSelectionChangeEvent) => {
-        const { start } = event.nativeEvent.selection;
+        const { start, end } = event.nativeEvent.selection;
 
         // Between a text change and the commit that carries the corrected caret, the platform
         // reports where *it* put the caret after replacing the string — usually the end. Taking
@@ -443,7 +477,7 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
 
         // Releasing the controlled selection is the effect's job, not this handler's — doing it
         // here loses the correction on iOS, see `pendingSelection`.
-        lastSelection.current = start;
+        lastSelection.current = { start, end };
     }, []);
 
     const renderDefaultDropdownImage = React.useMemo(() => {
@@ -465,13 +499,15 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
                 return false;
             }
             try {
-                let cleanNumber = phoneNumber.replace(/[^\d+]/g, "");
-                if (cleanNumber.startsWith("0")) {
-                    cleanNumber = cleanNumber.substring(1);
-                }
+                const cleanNumber = phoneNumber.replace(/[^\d+]/g, "");
                 if (!cleanNumber) {
                     return false;
                 }
+                // The leading zero is not stripped by hand here, for the same regional reason
+                // `toE164` documents: `parse` applies the region's trunk-prefix rule itself.
+                // Stripping first made this call disagree with `onChangeFormattedText` about the
+                // very same string — `0612345678` is a valid Italian number and was reported
+                // invalid, while the formatted output correctly read `+390612345678`.
                 const parsedNumber = phoneUtil.parse(cleanNumber, countryCode);
                 return phoneUtil.isValidNumber(parsedNumber);
             } catch {
@@ -514,8 +550,12 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
 
     // A fresh literal here changed `CountryPicker`'s props on every render, which is what put
     // the whole picker subtree back through render on every keystroke.
+    //
+    // The theme is merged rather than replaced: supplying any `countryPickerProps` at all used to
+    // drop the default, so `withDarkTheme` silently stopped applying to the picker. An explicit
+    // `theme` inside `countryPickerProps` still wins.
     const countryPickerProps = React.useMemo(
-        () => props.countryPickerProps ?? { theme: withDarkTheme ? DARK_THEME : DEFAULT_THEME },
+        () => ({ theme: withDarkTheme ? DARK_THEME : DEFAULT_THEME, ...props.countryPickerProps }),
         [props.countryPickerProps, withDarkTheme]
     );
 

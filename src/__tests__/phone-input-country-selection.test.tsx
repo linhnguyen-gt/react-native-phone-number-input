@@ -2,6 +2,24 @@ import { renderPhoneInput } from "../test-utils/render-phone-input";
 
 const TWO_COUNTRIES = { countryCodes: ["US", "VN"] as const };
 
+describe("initial country", () => {
+    it("lets defaultCallingCode win over defaultCode, as documented", async () => {
+        const input = await renderPhoneInput({ defaultCode: "US", defaultCallingCode: "65", layout: "second" });
+
+        // The two lookups used to race, and the defaultCode one resolved a microtask later, so it
+        // always won — leaving the Singapore flag selected above a "+1" label.
+        expect(input.callingCode()).toBe("+65");
+        expect(input.ref.current?.getCountryCode()).toBe("SG");
+        expect(input.ref.current?.getCallingCode()).toBe("65");
+    });
+
+    it("resolves the calling code from defaultCode when that is all it is given", async () => {
+        const input = await renderPhoneInput({ defaultCode: "US", layout: "second" });
+
+        expect(input.callingCode()).toBe("+1");
+    });
+});
+
 describe("country selection", () => {
     it("opens the picker from the flag button", async () => {
         const input = await renderPhoneInput({

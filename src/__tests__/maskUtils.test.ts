@@ -1,5 +1,7 @@
 import {
     applyMask,
+    capToMask,
+    getCaretAfterEdit,
     getMaskForCountry,
     getMaxDigits,
     getNewCursorPosition,
@@ -291,6 +293,62 @@ describe("maskUtils", () => {
 
         it("clamps to the end when the new value is shorter", () => {
             expect(getNewCursorPosition("(202) 555-0123", "(20", 12)).toBe(3);
+        });
+    });
+
+    describe("capToMask", () => {
+        it("stops at the mask's capacity", () => {
+            expect(capToMask("12345678901234", "US")).toBe("1234567890");
+        });
+
+        it("strips mask characters before counting", () => {
+            expect(capToMask("+1 (202) 555-0123", "US")).toBe("12025550123".slice(0, 10));
+        });
+
+        it("leaves countries without an authored mask alone", () => {
+            // AF falls through to DEFAULT, which is a guess — capping on it would block valid input.
+            expect(hasAuthoredMask("AF")).toBe(false);
+            expect(capToMask("12345678901234", "AF")).toBe("12345678901234");
+        });
+
+        it("passes through anything already short enough", () => {
+            expect(capToMask("202", "US")).toBe("202");
+            expect(capToMask("", "US")).toBe("");
+        });
+    });
+
+    describe("getCaretAfterEdit", () => {
+        const US = getMaskForCountry("US");
+        const collapsed = (at: number) => ({ start: at, end: at });
+
+        it("advances past a digit typed at the end", () => {
+            // "(123) 456" with the caret at the end, user types "7".
+            expect(getCaretAfterEdit(9, collapsed(9), "(123) 4567", applyMask("1234567", US))).toBe(11);
+        });
+
+        it("advances past a digit inserted mid-string", () => {
+            // "(1|23) 456", user types "9" — the caret belongs right after it.
+            expect(getCaretAfterEdit(9, collapsed(2), "(19123) 456", applyMask("19123456", US))).toBe(4);
+        });
+
+        it("steps back over a backspace at the end", () => {
+            expect(getCaretAfterEdit(9, collapsed(9), "(123) 45", applyMask("12345", US))).toBe(8);
+        });
+
+        it("stays where a selected range was when that range is deleted", () => {
+            // "(123) [456]-7890" — deleting the selection must not drag the caret three characters
+            // left, which is what tracking only the selection start used to do.
+            expect(getCaretAfterEdit(14, { start: 6, end: 9 }, "(123) -7890", applyMask("1237890", US))).toBe(4);
+        });
+
+        it("lands after the replacement when the whole field is selected and retyped", () => {
+            // Select-all then type "9". Tracking only the start put the caret at 0 — before the
+            // opening "(" — so every following digit was inserted ahead of the last, reversing them.
+            expect(getCaretAfterEdit(14, { start: 0, end: 14 }, "9", applyMask("9", US))).toBe(2);
+        });
+
+        it("never returns a negative offset", () => {
+            expect(getCaretAfterEdit(14, collapsed(0), "", "")).toBe(0);
         });
     });
 });

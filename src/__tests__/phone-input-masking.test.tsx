@@ -98,3 +98,69 @@ describe("E.164 output", () => {
         expect(onChangeFormattedText).toHaveBeenLastCalledWith("+84912345678");
     });
 });
+
+describe("the cap on paths that do not go through a keystroke", () => {
+    it("caps a seeded defaultValue instead of waiting for the next keystroke", async () => {
+        const input = await renderPhoneInput({
+            withMask: true,
+            defaultCode: "US",
+            // Punctuated and over-long. The value is a national number, so every digit in it
+            // counts — a calling-code prefix would be consumed as one.
+            defaultValue: "(202) 555-01239999"
+        });
+
+        expect(input.displayedValue()).toBe("(202) 555-0123");
+        expect(input.ref.current?.getNumberAfterPossiblyEliminatingZero().number).toBe("2025550123");
+    });
+
+    it("caps a controlled value", async () => {
+        const input = await renderPhoneInput({ withMask: true, defaultCode: "US", value: "20255501239999" });
+
+        expect(input.displayedValue()).toBe("(202) 555-0123");
+    });
+
+    it("truncates to the new country's mask on selection, and says so", async () => {
+        const onChangeText = jest.fn();
+        // AF has no authored mask, so 14 digits are accepted; US holds ten.
+        const input = await renderPhoneInput({
+            withMask: true,
+            defaultCode: "AF",
+            onChangeText,
+            countryPickerProps: { countryCodes: ["AF", "US"] }
+        });
+
+        await input.type("12345678901234");
+        onChangeText.mockClear();
+
+        await input.openPicker();
+        await input.selectCountry("US");
+
+        expect(input.displayedValue()).toBe("(123) 456-7890");
+        // The four dropped digits are reported, rather than disappearing silently until the user
+        // happens to type again.
+        expect(onChangeText).toHaveBeenLastCalledWith("1234567890");
+    });
+});
+
+describe("isValidNumber", () => {
+    it("keeps a trunk zero the region keeps", async () => {
+        const input = await renderPhoneInput({ defaultCode: "IT" });
+
+        // Stripping the zero by hand turned this valid Italian number invalid, while
+        // onChangeFormattedText emitted +390612345678 for the very same string.
+        expect(input.ref.current?.isValidNumber("0612345678")).toBe(true);
+    });
+
+    it("drops a trunk zero the region drops", async () => {
+        const input = await renderPhoneInput({ defaultCode: "VN" });
+
+        expect(input.ref.current?.isValidNumber("0912345678")).toBe(true);
+    });
+
+    it("rejects an empty or non-numeric string", async () => {
+        const input = await renderPhoneInput({ defaultCode: "US" });
+
+        expect(input.ref.current?.isValidNumber("")).toBe(false);
+        expect(input.ref.current?.isValidNumber("abc")).toBe(false);
+    });
+});

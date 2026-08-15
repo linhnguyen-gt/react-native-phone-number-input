@@ -8,8 +8,7 @@ const useNativeDriver = true;
 
 const styles = StyleSheet.create({
     // Spelled out rather than spreading StyleSheet.absoluteFillObject, which React Native 0.87
-    // removed, or absoluteFill, which is a registered style id on older versions this package
-    // still supports.
+    // removed, or absoluteFill, which is a registered style id rather than an object.
     absolute: {
         position: "absolute",
         left: 0,

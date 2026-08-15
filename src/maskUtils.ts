@@ -84,6 +84,23 @@ export function removeMask(value: string): string {
 }
 
 /**
+ * Strip a value down to the digits the country's mask can hold.
+ *
+ * Every path that can put digits into the field runs through here — typing, a seeded
+ * `defaultValue`, a controlled `value`, and switching to a country with a shorter mask — so the
+ * cap cannot be walked around by arriving from a different direction. Countries without an
+ * authored mask are returned untouched, for the reason `hasAuthoredMask` documents.
+ *
+ * @param value - The value to cap, mask characters allowed
+ * @param countryCode - The selected region, which decides the capacity
+ * @returns Digits only, no longer than the country's mask allows
+ */
+export function capToMask(value: string, countryCode: CountryCode): string {
+    const digits = removeMask(value);
+    return hasAuthoredMask(countryCode) ? digits.slice(0, getMaxDigits(getMaskForCountry(countryCode))) : digits;
+}
+
+/**
  * Apply a mask pattern to a phone number
  * @param value - The raw phone number (digits only or with formatting)
  * @param mask - The mask pattern to apply
@@ -151,6 +168,33 @@ export function getNewCursorPosition(previousValue: string, newValue: string, pr
     }
 
     return newValue.length;
+}
+
+/**
+ * Where the caret belongs after the user edited a masked string.
+ *
+ * `TextInput` reports the text after the edit but never says what the edit was, so it is
+ * reconstructed from the selection that was in force. The edit replaced the selected range, which
+ * means the characters it contributed are the net length change plus the length of what it
+ * overwrote — for a plain keystroke the range is empty and that reduces to the net delta. The
+ * resulting offset is then re-anchored onto the re-masked string by digit count, so the caret
+ * never lands inside a literal.
+ *
+ * @param previousDisplay - Length of the masked string before the edit
+ * @param selection - The selection in force when the edit happened, as offsets into that string
+ * @param text - The string `TextInput` reported after the edit
+ * @param nextDisplay - The re-masked string that is about to be rendered
+ * @returns The caret offset within `nextDisplay`
+ */
+export function getCaretAfterEdit(
+    previousDisplay: number,
+    selection: { start: number; end: number },
+    text: string,
+    nextDisplay: string
+): number {
+    const inserted = text.length - (previousDisplay - (selection.end - selection.start));
+    const caretInText = Math.max(0, selection.start + inserted);
+    return getNewCursorPosition(text, nextDisplay, caretInText);
 }
 
 /**
