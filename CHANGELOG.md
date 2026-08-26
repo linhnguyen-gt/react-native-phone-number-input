@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.8.1](https://github.com/linhnguyen-gt/react-native-phone-number-input/compare/v3.8.0...v3.8.1) (2026-08-26)
+
+* refactor!: take ref as a prop instead of wrapping in forwardRef ([04b43f2](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/04b43f28202c3ce1cde13b0d658edc834b9193de))
+* feat!: narrow the peer range to react >=19 and react-native >=0.87 ([3898244](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/38982443201cccd78b83f4d0ddf8b8fe9dc6ab1e))
+* fix(types)!: generate the published declarations instead of hand-writing them ([46849ec](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/46849ec9f764ff7f858c42e3b221cecf2d14a33d))
+
+### Bug Fixes
+
+* correct the defects found in the 4.0 review pass ([d0bb523](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/d0bb523779c0a42d5ad4438ca13a3f01f6f27168))
+* **example:** repair the android and ios builds under React Native 0.87 ([f60ab65](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/f60ab6548bfc80a900f89713450acbc949cec0cd))
+* **layout:** resolve proportional sizes against the current window ([6a843e3](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/6a843e3e2c86235803b049c07261bbe18a5ffe11))
+* **phone-input:** replace close fallback image and clear lint errors ([c396b8b](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/c396b8b4081d4b00dbda8b995d022e1d1e348e1c))
+* **picker:** keep the modal's animated value across renders ([b771236](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/b771236419c92987477f37b90fac2f2023f981fa))
+* **picker:** make every state setter a functional update ([42981f1](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/42981f18fd9da6e14d5877b614716a545ac780a4))
+* **picker:** size country rows against the current window ([a7fa364](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/a7fa3641aeaa5250728a373807f6b624d474eb79))
+* **picker:** split picker state, surface load errors, and retry on reopen ([258a53e](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/258a53e85df06d88d3b9d60ec5b5c3b631d7afd1))
+
+### Features
+
+* **masking:** cap masked input, emit E.164, and keep the caret in place ([4694c98](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/4694c98a55c3ffc63885a05ee60d2cda3743192f))
+
+### Performance Improvements
+
+* stop the picker subtree re-rendering on every keystroke ([1df5dfb](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/1df5dfbc605cfcc7847c188effd1fc97ab244ab9))
+
+### BREAKING CHANGES
+
+* PhoneInput is no longer a ForwardRefExoticComponent. Passing a
+  ref is unchanged for consumers on React 19.
+* react < 19 and react-native < 0.87 are no longer supported.
+  The 3.x line remains available for those.
+* the published type declarations are generated from the source.
+  countryPickerProps is now Partial<CountryPickerModalProps>, which accepts
+  everything the old declaration did and more.
+
 # [3.8.0](https://github.com/linhnguyen-gt/react-native-phone-number-input/compare/v3.6.0...v3.8.0) (2025-12-20)
 
 
