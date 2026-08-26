@@ -1,16 +1,18 @@
 name: Automated Release
 
-# Releases are cut deliberately, never by merging code. A push trigger computed the
-# version from commit messages, which meant a breaking change could ship as a patch.
+# Releases are cut deliberately, never by merging code. The dispatch input picks
+# the increment; "auto" lets release-it derive it from conventional commits so a
+# breaking change can no longer ship as a patch.
 on:
     workflow_dispatch:
         inputs:
             increment:
-                description: "Version increment passed to release-it"
-                required: true
-                default: "patch"
+                description: "Version increment passed to release-it (auto = derive from conventional commits)"
+                required: false
+                default: "auto"
                 type: choice
                 options:
+                    - auto
                     - patch
                     - minor
                     - major
@@ -46,27 +48,40 @@ jobs:
               run: |
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
-
             - name: Run release-it
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  INCREMENT: ${{ inputs.increment }}
               run: |
-                  # release-it bumps the version, writes the changelog, tags, and creates the
-                  # GitHub release. It does NOT publish to npm — npm.publish is false and
-                  # publish.yml is the single path to the registry, gated on that GitHub release.
-                  npm run release -- ${{ inputs.increment }} --ci
+                  # release-it bumps the version, writes the changelog, tags, and creates
+                  # the GitHub release. It does NOT publish to npm — npm.publish is false;
+                  # the Publish step below is this repo's single path to the registry.
+                  # increment=auto omits the explicit bump so conventional commits decide it.
+                  if [ "$INCREMENT" = "auto" ]; then
+                      INCREMENT_ARGS=""
+                  else
+                      INCREMENT_ARGS="$INCREMENT"
+                  fi
+                  npm run release -- $INCREMENT_ARGS --ci
 
             - name: Extract Latest Changelog
               id: changelog
               run: |
-                  # Extract only the latest version section from CHANGELOG.md
                   VERSION=$(git describe --tags --abbrev=0)
+                  VERSION_NUMBER=${VERSION#v}
 
-                  # Use awk to extract content between first # [version] and second # [version]
-                  CHANGELOG=$(awk '/^# \[[0-9]/{if(++count==2) exit; if(count==1) next} count==1' CHANGELOG.md)
+                  # Extract only the released version's section from CHANGELOG.md,
+                  # matching both "# [x.y.z]" and "## [x.y.z]" heading styles.
+                  awk -v ver="$VERSION_NUMBER" '
+                      $0 ~ "^#+ \\[" ver "\\]" { found = 1; next }
+                      found && /^#+ \[[0-9]/ { exit }
+                      found { print }
+                  ' CHANGELOG.md > /tmp/release-notes.md
 
-                  # Save to file for GitHub release update
-                  echo "$CHANGELOG" > /tmp/release-notes.md
+                  if [ ! -s /tmp/release-notes.md ]; then
+                      echo "::error::No changelog section found for $VERSION_NUMBER"
+                      exit 1
+                  fi
 
                   echo "Extracted changelog for $VERSION"
 
@@ -78,3 +93,8 @@ jobs:
 
                   # Update the release with extracted changelog
                   gh release edit $VERSION --notes-file /tmp/release-notes.md
+
+            - name: Publish to NPM
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              run: npm publish --access public
