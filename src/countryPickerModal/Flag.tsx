@@ -1,6 +1,15 @@
 import { memo } from "react";
 import { useAsync } from "react-async-hook";
-import { ActivityIndicator, Image, PixelRatio, StyleSheet, Text, View } from "react-native";
+import {
+    ActivityIndicator,
+    Image,
+    PixelRatio,
+    StyleSheet,
+    Text,
+    View,
+    type StyleProp,
+    type ViewStyle
+} from "react-native";
 import { useContext } from "./CountryContext";
 import { Emoji } from "./Emoji";
 import { type CountryCode } from "./types";
@@ -33,6 +42,8 @@ interface FlagProps {
     withEmoji?: boolean;
     withFlagButton?: boolean;
     flagSize: number;
+    style?: StyleProp<ViewStyle>;
+    testID?: string;
 }
 
 const ImageFlag = memo(({ countryCode, flagSize }: FlagProps) => {
@@ -66,9 +77,9 @@ const EmojiFlag = memo(({ countryCode, flagSize }: FlagProps) => {
     );
 });
 
-export const Flag = ({ countryCode, withEmoji = true, withFlagButton = true, flagSize }: FlagProps) =>
+export const Flag = ({ countryCode, withEmoji = true, withFlagButton = true, flagSize, style, testID }: FlagProps) =>
     withFlagButton ? (
-        <View style={styles.container}>
+        <View testID={testID} style={[styles.container, style]}>
             {withEmoji ? <EmojiFlag {...{ countryCode, flagSize }} /> : <ImageFlag {...{ countryCode, flagSize }} />}
         </View>
     ) : null;

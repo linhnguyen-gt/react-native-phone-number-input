@@ -85,4 +85,18 @@ describe("proportional widths", () => {
 
         expect(buttonWidth(view)).toBe(42);
     });
+
+    it("drops the computed width entirely when flagButtonAutoWidth is set", async () => {
+        const view = await render(<PhoneInput defaultCode="US" flagButtonAutoWidth />);
+
+        // Nothing left to size the button but its own content (and `minWidth: 32`, which
+        // `buttonWidth` deliberately doesn't look at — it isn't the computed proportional width).
+        expect(buttonWidth(view)).toBeUndefined();
+    });
+
+    it("still lets flagButtonStyle set a width even with flagButtonAutoWidth", async () => {
+        const view = await render(<PhoneInput defaultCode="US" flagButtonAutoWidth flagButtonStyle={{ width: 42 }} />);
+
+        expect(buttonWidth(view)).toBe(42);
+    });
 });

@@ -220,6 +220,8 @@ const MaskingExample = () => {
 | `filterProps`              | `CountryFilterProps`         | Country filter props                  |
 | `countryPickerProps`       | `Partial<CountryPickerModalProps>` | Country picker modal props; `countryCode` and `onSelect` are set internally |
 | `flagSize`                 | `number`                     | Size of the country flag              |
+| `flagContainerStyle`       | `StyleProp<ViewStyle>`       | Flag's own container style, merged after the default (`width: 30, marginRight: 10`) |
+| `flagButtonAutoWidth`      | `boolean`                    | Skip the button's responsive width (20%/23% of the window) and size it to its content instead. Default `false` |
 | `showCountryCode`          | `boolean`                    | Show the country code                 |
 
 ## 🔧 Methods

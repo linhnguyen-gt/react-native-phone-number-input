@@ -182,6 +182,26 @@ export type PhoneInputProps = {
     /** Font size of the flag emoji, or height of the flag image. */
     flagSize?: number;
 
+    /**
+     * Style for the flag's own container, merged after the default (`width: 30, marginRight: 10`).
+     * Lets a caller resize the flag's box and the gap it leaves before the dropdown arrow,
+     * independently of `flagButtonStyle` (which styles the whole tappable button, not the flag
+     * itself).
+     */
+    flagContainerStyle?: StyleProp<ViewStyle>;
+
+    /**
+     * Skips the button's built-in responsive width (20% of the window, 23% in the second
+     * layout), letting it size to its own content (the flag plus the dropdown arrow) instead.
+     *
+     * The default stays proportional to the window on purpose, so this is opt-in: existing
+     * consumers keep the exact width they had. `flagButtonStyle`/`countryPickerButtonStyle` still
+     * apply on top and can set their own `width` regardless of this flag.
+     *
+     * @default false
+     */
+    flagButtonAutoWidth?: boolean;
+
     /** Show the calling code next to the flag. */
     showCountryCode?: boolean;
 };
@@ -291,7 +311,7 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
     const lastSelection = React.useRef({ start: 0, end: 0 });
     const lastDisplayLength = React.useRef(0);
 
-    const { withMask = false, disabled = false, layout = "first", flagSize } = props;
+    const { withMask = false, disabled = false, layout = "first", flagSize, flagContainerStyle } = props;
 
     /**
      * Consumer callbacks are held in a ref. They are almost always inline arrows, so listing
@@ -487,10 +507,17 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
 
     const renderFlagButton = React.useCallback(() => {
         if (layout === "first") {
-            return <Flag countryCode={countryCode} flagSize={flagSize || DEFAULT_THEME.flagSize} />;
+            return (
+                <Flag
+                    testID="phone-input-flag"
+                    countryCode={countryCode}
+                    flagSize={flagSize || DEFAULT_THEME.flagSize}
+                    style={flagContainerStyle}
+                />
+            );
         }
         return null;
-    }, [countryCode, layout, flagSize]);
+    }, [countryCode, layout, flagSize, flagContainerStyle]);
 
     React.useImperativeHandle(ref, () => ({
         getCountryCode: () => countryCode,
@@ -539,6 +566,7 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
         placeholder,
         disableArrowIcon,
         flagButtonStyle,
+        flagButtonAutoWidth = false,
         containerStyle,
         textContainerStyle,
         renderDropdownImage = renderDefaultDropdownImage,
@@ -569,7 +597,7 @@ const PhoneInput = ({ ref, ...props }: PhoneInputProps & { ref?: React.Ref<Phone
                     testID="phone-input-country-button"
                     style={[
                         styles.flagButtonView,
-                        layout === "second" ? widths.flagButtonExtra : widths.flagButton,
+                        !flagButtonAutoWidth && (layout === "second" ? widths.flagButtonExtra : widths.flagButton),
                         flagButtonStyle,
                         countryPickerButtonStyle
                     ]}
