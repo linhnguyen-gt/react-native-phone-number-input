@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+# [3.9.0](https://github.com/linhnguyen-gt/react-native-phone-number-input/compare/v3.8.1...v3.9.0) (2026-10-08)
+
+### Features
+
+* **flag:** let callers resize the flag container and skip the button's responsive width ([#15](https://github.com/linhnguyen-gt/react-native-phone-number-input/issues/15)) ([d1a276d](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/d1a276d9a34a0176af1b12b2b769ad3c6da0d598))
+
 ## [3.8.1](https://github.com/linhnguyen-gt/react-native-phone-number-input/compare/v3.8.0...v3.8.1) (2026-08-26)
 
 * refactor!: take ref as a prop instead of wrapping in forwardRef ([04b43f2](https://github.com/linhnguyen-gt/react-native-phone-number-input/commit/04b43f28202c3ce1cde13b0d658edc834b9193de))
